@@ -439,9 +439,11 @@ if (
   !facesSrc.includes("export function overflowMoreOpen") ||
   !facesSrc.includes("export const FACE_STAY_PULSE_MS") ||
   !facesSrc.includes("export function overflowSheetRows") ||
-  !facesSrc.includes("export function overflowRecedeKicker")
+  !facesSrc.includes("export function overflowRecedeKicker") ||
+  !facesSrc.includes("export function faceEditorCloseMenu") ||
+  !facesSrc.includes("export function faceEditorReturnFocusId")
 ) {
-  console.error("faces.ts must export FACE_BAR_VISIBLE, overflowFaces, overflowMoreTitle, faceArrivesFromOverflow, facesDepartToOverflow, overflowRowSettles, overflowRowLeaves, overflowSheetHoldMs, overflowSheetExits, overflowMoreOpen, FACE_STAY_PULSE_MS, overflowSheetRows, and overflowRecedeKicker");
+  console.error("faces.ts must export FACE_BAR_VISIBLE, overflowFaces, overflowMoreTitle, faceArrivesFromOverflow, facesDepartToOverflow, overflowRowSettles, overflowRowLeaves, overflowSheetHoldMs, overflowSheetExits, overflowMoreOpen, FACE_STAY_PULSE_MS, overflowSheetRows, overflowRecedeKicker, faceEditorCloseMenu, and faceEditorReturnFocusId");
   process.exit(1);
 }
 if (!faceBarSrc.includes("overflowFaces") || !faceBarSrc.includes("FACE_BAR_VISIBLE")) {
@@ -533,6 +535,21 @@ if (overflowClick.includes("setMenu") || overflowClick.includes("setRename")) {
   console.error("overflow row click must not close N more or open the editor in the same handler");
   process.exit(1);
 }
+if (
+  !overflowSheet.includes("autoFocus={") ||
+  !overflowSheet.includes("editorReturnFocusId === f.id")
+) {
+  console.error("overflow row must autoFocus when faceEditorReturnFocusId matches this id");
+  process.exit(1);
+}
+if (morePill.includes("autoFocus")) {
+  console.error("N more count pill must not steal focus with autoFocus");
+  process.exit(1);
+}
+if (!morePill.includes("setEditorReturnFocusId(null)")) {
+  console.error("opening N more from the count pill must clear editorReturnFocusId so it does not steal focus");
+  process.exit(1);
+}
 const overflowContext = overflowSheet.match(/onContextMenu=\{\(e\) => \{[\s\S]*?\}\}/)?.[0] ?? "";
 if (
   !overflowContext.includes("e.preventDefault()") ||
@@ -540,6 +557,10 @@ if (
   !overflowContext.includes("setMenu(f.id)")
 ) {
   console.error("overflow row context menu must open this Face's editor without pinning first");
+  process.exit(1);
+}
+if (!overflowContext.includes("setEditorFromOverflow(true)")) {
+  console.error("overflow context menu must remember the editor came from N more");
   process.exit(1);
 }
 if (overflowContext.includes("setActiveFace") || overflowContext.includes("holdOverflowForLeave")) {
@@ -898,6 +919,14 @@ if (pillMap.includes("settle")) {
 }
 if (!pillMap.includes("s.setActiveFace(f.id)")) {
   console.error("shown FaceBar pill click must still setActiveFace");
+  process.exit(1);
+}
+const shownContext = pillMap.match(/onContextMenu=\{\(e\) => \{[\s\S]*?\}\}/)?.[0] ?? "";
+if (
+  !shownContext.includes("setEditorFromOverflow(false)") ||
+  !shownContext.includes("setMenu(f.id)")
+) {
+  console.error("bar-opened Face editor must not be remembered as overflow");
   process.exit(1);
 }
 if (/onMouseEnter/.test(pillMap) || /onFocus/.test(pillMap)) {
@@ -1283,6 +1312,46 @@ if (
   !faceBarSrc.includes("[namerOpen, outlookOpen, overflowOpen, editorOpen]")
 ) {
   console.error("Face editor must close on Escape like namer / Outlook pick");
+  process.exit(1);
+}
+if (!faceBarSrc.includes("faceEditorCloseMenu") || !faceBarSrc.includes("onClose={closeEditor}")) {
+  console.error("FaceBar must import faceEditorCloseMenu and wire it to FaceEditor onClose");
+  process.exit(1);
+}
+if (
+  !faceBarSrc.includes("faceEditorReturnFocusId") ||
+  !faceBarSrc.includes("setEditorReturnFocusId")
+) {
+  console.error("FaceBar must keep faceEditorReturnFocusId from closeEditor");
+  process.exit(1);
+}
+const closeEditorFx =
+  faceBarSrc.match(/const closeEditor = \(reason: FaceEditorCloseReason\) => \{[\s\S]*?\n  \};/)?.[0] ??
+  "";
+if (
+  !closeEditorFx.includes("faceEditorReturnFocusId") ||
+  !closeEditorFx.includes("setEditorReturnFocusId") ||
+  !closeEditorFx.includes("editedId") ||
+  !closeEditorFx.includes("overflowIds")
+) {
+  console.error("closeEditor must keep faceEditorReturnFocusId from the helper");
+  process.exit(1);
+}
+if (!faceBarSrc.includes('closeEditor("escape")')) {
+  console.error("Face editor Escape must setMenu via faceEditorCloseMenu");
+  process.exit(1);
+}
+if (
+  !editorSheet.includes('onClose("save")') ||
+  !editorSheet.includes('onClose("inbox")') ||
+  !editorSheet.includes('onClose("remove")')
+) {
+  console.error("Face editor Save / Open inbox / Remove must pass close reasons");
+  process.exit(1);
+}
+const awayFx = faceBarSrc.match(/const onDoc = \(e: MouseEvent\) => \{[\s\S]*?\};/)?.[0] ?? "";
+if (!awayFx.includes("setMenu(null)") || awayFx.includes("faceEditorCloseMenu")) {
+  console.error("click-away must still dismiss the overlay, not reopen N more");
   process.exit(1);
 }
 if (!faceBarSrc.includes("editorOpen && menu")) {
@@ -1780,7 +1849,7 @@ if (storeSrc.includes('title: "New thread"')) {
 }
 const runner = `
 import { looksLikeUrl, parseOmnibox, previewIntent, normalizeUrl, omniboxEnter, commitToIntent } from "./src/lib/intent.ts";
-import { resolveFaceClick, resolveFaceClose, clusterTabsByFace, clusterTabLayout, overflowFaces, overflowMoreTitle, faceArrivesFromOverflow, facesDepartToOverflow, overflowRowSettles, overflowRowLeaves, overflowSheetHoldMs, overflowSheetExits, overflowMoreOpen, FACE_STAY_PULSE_MS, overflowSheetRows, overflowRecedeKicker, FACE_BAR_VISIBLE, faceSwitchChord, faceSwitchChordCompact, faceIndexFromDigitCode, FACE_ROLES, normalizeFaceName, partitionFor, homeThreadTitle, tabIsFaceInbox, resolveFaceHome, OUTLOOK_WORK } from "./src/lib/faces.ts";
+import { resolveFaceClick, resolveFaceClose, clusterTabsByFace, clusterTabLayout, overflowFaces, overflowMoreTitle, faceArrivesFromOverflow, facesDepartToOverflow, overflowRowSettles, overflowRowLeaves, overflowSheetHoldMs, overflowSheetExits, overflowMoreOpen, FACE_STAY_PULSE_MS, overflowSheetRows, overflowRecedeKicker, faceEditorCloseMenu, faceEditorReturnFocusId, FACE_BAR_VISIBLE, faceSwitchChord, faceSwitchChordCompact, faceIndexFromDigitCode, FACE_ROLES, normalizeFaceName, partitionFor, homeThreadTitle, tabIsFaceInbox, resolveFaceHome, OUTLOOK_WORK } from "./src/lib/faces.ts";
 import { STARTERS } from "./src/lib/starters.ts";
 
 const go = [
@@ -2754,6 +2823,140 @@ const noHomeUrl = resolveFaceHome({
 });
 if (noHomeUrl.kind !== "newHome" || noHomeUrl.faceId !== "personal") {
   console.error("no homeUrl must mint a new home thread:", noHomeUrl);
+  failed++;
+}
+
+if (faceEditorCloseMenu({ fromOverflow: true, reason: "save", overflowRemaining: 1 }) !== "overflow") {
+  console.error("overflow Save must return to N more");
+  failed++;
+}
+if (faceEditorCloseMenu({ fromOverflow: true, reason: "escape", overflowRemaining: 1 }) !== "overflow") {
+  console.error("overflow Escape must return to N more");
+  failed++;
+}
+if (faceEditorCloseMenu({ fromOverflow: true, reason: "remove", overflowRemaining: 1 }) !== "overflow") {
+  console.error("overflow Remove with others remaining must return to N more");
+  failed++;
+}
+if (faceEditorCloseMenu({ fromOverflow: false, reason: "save", overflowRemaining: 1 }) !== null) {
+  console.error("bar-opened Save must close");
+  failed++;
+}
+if (faceEditorCloseMenu({ fromOverflow: false, reason: "escape", overflowRemaining: 1 }) !== null) {
+  console.error("bar-opened Escape must close");
+  failed++;
+}
+if (faceEditorCloseMenu({ fromOverflow: true, reason: "inbox", overflowRemaining: 2 }) !== null) {
+  console.error("Open inbox must close, not reopen N more");
+  failed++;
+}
+if (faceEditorCloseMenu({ fromOverflow: true, reason: "away", overflowRemaining: 2 }) !== null) {
+  console.error("click-away must close, not reopen N more");
+  failed++;
+}
+if (faceEditorCloseMenu({ fromOverflow: true, reason: "remove", overflowRemaining: 0 }) !== null) {
+  console.error("Remove last overflowed Face must close");
+  failed++;
+}
+
+const folded = ["school", "home"];
+if (
+  faceEditorReturnFocusId({
+    fromOverflow: true,
+    reason: "save",
+    editedId: "school",
+    overflowIds: folded,
+  }) !== "school"
+) {
+  console.error("overflow Save must focus the edited overflow row");
+  failed++;
+}
+if (
+  faceEditorReturnFocusId({
+    fromOverflow: true,
+    reason: "escape",
+    editedId: "school",
+    overflowIds: folded,
+  }) !== "school"
+) {
+  console.error("overflow Escape must focus the edited overflow row");
+  failed++;
+}
+if (
+  faceEditorReturnFocusId({
+    fromOverflow: true,
+    reason: "remove",
+    editedId: "school",
+    overflowIds: folded,
+  }) !== "home"
+) {
+  console.error("overflow Remove with others remaining must focus the first remaining folded id");
+  failed++;
+}
+if (
+  faceEditorReturnFocusId({
+    fromOverflow: true,
+    reason: "remove",
+    editedId: "home",
+    overflowIds: ["school", "home", "work"],
+  }) !== "school"
+) {
+  console.error("Remove-with-others must focus the first remaining folded id, not the next after edited");
+  failed++;
+}
+if (
+  faceEditorReturnFocusId({
+    fromOverflow: false,
+    reason: "save",
+    editedId: "school",
+    overflowIds: folded,
+  }) !== null
+) {
+  console.error("bar-opened Save must not return overflow-row focus");
+  failed++;
+}
+if (
+  faceEditorReturnFocusId({
+    fromOverflow: false,
+    reason: "escape",
+    editedId: "school",
+    overflowIds: folded,
+  }) !== null
+) {
+  console.error("bar-opened Escape must not return overflow-row focus");
+  failed++;
+}
+if (
+  faceEditorReturnFocusId({
+    fromOverflow: true,
+    reason: "inbox",
+    editedId: "school",
+    overflowIds: folded,
+  }) !== null
+) {
+  console.error("Open inbox must not return overflow-row focus");
+  failed++;
+}
+if (
+  faceEditorReturnFocusId({
+    fromOverflow: true,
+    reason: "away",
+    editedId: "school",
+    overflowIds: folded,
+  }) !== null
+) {
+  console.error("click-away must not return overflow-row focus");
+  failed++;
+}
+if (
+  faceEditorReturnFocusId({
+    fromOverflow: true,
+    reason: "remove",
+    editedId: "school",
+    overflowIds: ["school"],
+  }) !== null
+) {
+  console.error("Remove last overflowed Face must not return overflow-row focus");
   failed++;
 }
 

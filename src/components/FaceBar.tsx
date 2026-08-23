@@ -3,6 +3,8 @@ import {
   FACE_BAR_VISIBLE,
   FACE_ROLES,
   faceArrivesFromOverflow,
+  faceEditorCloseMenu,
+  faceEditorReturnFocusId,
   faceSwitchChord,
   faceSwitchChordCompact,
   facesDepartToOverflow,
@@ -16,6 +18,7 @@ import {
   overflowSheetExits,
   overflowSheetHoldMs,
   overflowSheetRows,
+  type FaceEditorCloseReason,
 } from "../lib/faces";
 import { activeFace, faceOf, useHelix } from "../store";
 
@@ -28,6 +31,10 @@ export function FaceBar() {
       : null;
   const { shown, overflow } = overflowFaces(s.faces, s.activeFaceId, FACE_BAR_VISIBLE);
   const [menu, setMenu] = useState<"outlook" | "add" | "overflow" | string | null>(null);
+  const [editorFromOverflow, setEditorFromOverflow] = useState(false);
+  const [editorReturnFocusId, setEditorReturnFocusId] = useState<string | null>(
+    null,
+  );
   const [rename, setRename] = useState("");
   const [stayTick, setStayTick] = useState(0);
   const [overflowExit, setOverflowExit] = useState(false);
@@ -76,6 +83,12 @@ export function FaceBar() {
   }
   const wrap = useRef<HTMLDivElement>(null);
   const overflowHoldRef = useRef(0);
+  const editorFromOverflowRef = useRef(false);
+  const overflowRef = useRef(overflow);
+  const menuRef = useRef(menu);
+  editorFromOverflowRef.current = editorFromOverflow;
+  overflowRef.current = overflow;
+  menuRef.current = menu;
 
   const namerOpen = menu === "add" || s.faceNamerOpen;
   const outlookOpen = menu === "outlook" || s.outlookPickerOpen;
@@ -90,14 +103,45 @@ export function FaceBar() {
 
   const closeMenus = () => {
     setMenu(null);
+    setEditorFromOverflow(false);
+    setEditorReturnFocusId(null);
     useHelix.getState().setFaceNamerOpen(false);
     useHelix.getState().setOutlookPickerOpen(false);
+  };
+
+  const closeEditor = (reason: FaceEditorCloseReason) => {
+    const currentMenu = menuRef.current;
+    const fromOverflow = editorFromOverflowRef.current;
+    const overflowIds = overflowRef.current.map((f) => f.id);
+    const remaining =
+      reason === "remove" && typeof currentMenu === "string"
+        ? overflowRef.current.filter((f) => f.id !== currentMenu).length
+        : overflowRef.current.length;
+    const editedId = typeof currentMenu === "string" ? currentMenu : "";
+    setMenu(
+      faceEditorCloseMenu({
+        fromOverflow,
+        reason,
+        overflowRemaining: remaining,
+      }),
+    );
+    setEditorReturnFocusId(
+      faceEditorReturnFocusId({
+        fromOverflow,
+        reason,
+        editedId,
+        overflowIds,
+      }),
+    );
+    setEditorFromOverflow(false);
   };
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
       if (!wrap.current?.contains(e.target as Node)) {
         setMenu(null);
+        setEditorFromOverflow(false);
+        setEditorReturnFocusId(null);
         useHelix.getState().setFaceNamerOpen(false);
         useHelix.getState().setOutlookPickerOpen(false);
       }
@@ -111,7 +155,12 @@ export function FaceBar() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       e.preventDefault();
-      setMenu(null);
+      if (editorOpen) closeEditor("escape");
+      else {
+        setMenu(null);
+        setEditorFromOverflow(false);
+        setEditorReturnFocusId(null);
+      }
       useHelix.getState().setFaceNamerOpen(false);
       useHelix.getState().setOutlookPickerOpen(false);
     };
@@ -215,6 +264,8 @@ export function FaceBar() {
             onDoubleClick={() => s.openFaceHome(f.id)}
             onContextMenu={(e) => {
               e.preventDefault();
+              setEditorFromOverflow(false);
+              setEditorReturnFocusId(null);
               setRename(f.name);
               setMenu(f.id);
             }}
@@ -239,6 +290,7 @@ export function FaceBar() {
           onClick={() => {
             s.setFaceNamerOpen(false);
             s.setOutlookPickerOpen(false);
+            setEditorReturnFocusId(null);
             setMenu(overflowOpen ? null : "overflow");
           }}
         >
@@ -346,6 +398,7 @@ export function FaceBar() {
                 }
                 className={`face-overflow-row${rowLeaving ? " leave" : rowSettling ? " settle" : ""}`}
                 style={{ ["--face" as string]: f.color }}
+                autoFocus={editorReturnFocusId === f.id}
                 title={`${f.name}${f.hint ? ` · ${f.hint}` : ""}${chord ? `  ${chord}` : ""}`}
                 onClick={() => {
                   s.setActiveFace(f.id);
@@ -353,6 +406,7 @@ export function FaceBar() {
                 }}
                 onContextMenu={(e) => {
                   e.preventDefault();
+                  setEditorFromOverflow(true);
                   setRename(f.name);
                   setMenu(f.id);
                 }}
@@ -376,7 +430,7 @@ export function FaceBar() {
           faceId={menu}
           name={rename}
           setName={setRename}
-          onClose={() => setMenu(null)}
+          onClose={closeEditor}
         />
       )}
 
@@ -452,7 +506,7 @@ function FaceEditor({
   faceId: string;
   name: string;
   setName: (v: string) => void;
-  onClose: () => void;
+  onClose: (reason: FaceEditorCloseReason) => void;
 }) {
   const s = useHelix();
   const face = faceOf(s, faceId);
@@ -476,7 +530,7 @@ function FaceEditor({
           if (e.key === "Enter") {
             e.preventDefault();
             s.renameFace(faceId, name);
-            onClose();
+            onClose("save");
           }
         }}
         placeholder="Name this person"
@@ -486,7 +540,7 @@ function FaceEditor({
         className="face-editor-row"
         onClick={() => {
           s.renameFace(faceId, name);
-          onClose();
+          onClose("save");
         }}
       >
         Save name
@@ -497,7 +551,7 @@ function FaceEditor({
           className="face-editor-row"
           onClick={() => {
             s.openFaceHome(faceId);
-            onClose();
+            onClose("inbox");
           }}
         >
           Open inbox
@@ -509,7 +563,7 @@ function FaceEditor({
           className="face-editor-row"
           onClick={() => {
             s.removeFace(faceId);
-            onClose();
+            onClose("remove");
           }}
         >
           Remove {face.name}

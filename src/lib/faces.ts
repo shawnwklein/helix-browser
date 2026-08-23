@@ -387,3 +387,46 @@ export function overflowMoreTitle(faces: { name?: string | null }[]): string {
   if (!names.length) return "";
   return `${names.join(", ")} — also in this window`;
 }
+
+/** Why the Face editor is closing. Save includes Enter. */
+export type FaceEditorCloseReason = "save" | "escape" | "remove" | "inbox" | "away";
+
+/**
+ * Where the Face editor should land after it closes.
+ * Overflow-opened Save / Escape / Remove-with-others return to N more.
+ * Bar-opened editors, Open inbox, click-away, and Remove of the last
+ * overflowed Face close.
+ */
+export function faceEditorCloseMenu(opts: {
+  fromOverflow: boolean;
+  reason: FaceEditorCloseReason;
+  overflowRemaining: number;
+}): "overflow" | null {
+  if (!opts.fromOverflow) return null;
+  if (opts.reason === "inbox" || opts.reason === "away") return null;
+  if (opts.reason === "remove" && opts.overflowRemaining <= 0) return null;
+  return "overflow";
+}
+
+/**
+ * Which overflow-row takes keyboard focus when the Face editor closes.
+ * Overflow Save / Escape → the edited person. Remove-with-others → the first
+ * remaining folded id. Bar-opened, Open inbox, click-away, and last-remove → none.
+ */
+export function faceEditorReturnFocusId(opts: {
+  fromOverflow: boolean;
+  reason: FaceEditorCloseReason;
+  editedId: string;
+  overflowIds: readonly string[];
+}): string | null {
+  if (!opts.fromOverflow) return null;
+  if (opts.reason === "inbox" || opts.reason === "away") return null;
+  if (opts.reason === "remove") {
+    const remaining = opts.overflowIds.filter((id) => id !== opts.editedId);
+    return remaining[0] ?? null;
+  }
+  if (opts.reason === "save" || opts.reason === "escape") {
+    return opts.editedId || null;
+  }
+  return null;
+}
