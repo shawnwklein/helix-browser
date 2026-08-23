@@ -1066,7 +1066,7 @@ if (
   !faceBarSrc.includes("Browse as") ||
   !faceBarSrc.includes("Name this person")
 ) {
-  console.error("FaceBar + must open the add namer with role chips and Browse as");
+  console.error("FaceBar + must open the add namer with FACE_ROLES and Browse as");
   process.exit(1);
 }
 if (faceBarSrc.includes("onClick={() => s.addFace()}")) {
@@ -1081,8 +1081,119 @@ if (!overlaysSrc.includes("setFaceNamerOpen")) {
   console.error("New Face must open the same namer via setFaceNamerOpen");
   process.exit(1);
 }
-if (!cssSrc.includes(".face-roles") || !cssSrc.includes(".face-role")) {
-  console.error("index.css must style the Face role chip row");
+const namerSheet =
+  faceBarSrc.match(/function FaceNamer[\s\S]*?\nfunction FaceEditor/)?.[0] ?? "";
+if (!namerSheet) {
+  console.error("FaceBar must keep FaceNamer as its own sheet");
+  process.exit(1);
+}
+if (!namerSheet.includes("face-namer") || !namerSheet.includes("face-namer-row")) {
+  console.error("Face namer must be stacked identity rows, not a palette");
+  process.exit(1);
+}
+if (namerSheet.includes("pal-item")) {
+  console.error("Face namer sheet must not use pal-item");
+  process.exit(1);
+}
+if (namerSheet.includes("face-role") || namerSheet.includes("face-roles")) {
+  console.error("Face namer must not keep leftover role chips");
+  process.exit(1);
+}
+if (/profile/i.test(namerSheet) || namerSheet.includes("Chromium profile")) {
+  console.error("Face namer must not talk like a Chrome profile picker");
+  process.exit(1);
+}
+if (!namerSheet.includes("commit(role)") || !namerSheet.includes("FACE_ROLES.map")) {
+  console.error("Face namer Work / School / Home rows must still commit(role)");
+  process.exit(1);
+}
+if (!namerSheet.includes("s.addFace(named)") || !namerSheet.includes("normalizeFaceName")) {
+  console.error("Face namer addFace must stay named-only");
+  process.exit(1);
+}
+if (!namerSheet.includes("disabled={!ready}") || !namerSheet.includes("Browse as")) {
+  console.error("Browse as must stay gated until normalizeFaceName");
+  process.exit(1);
+}
+if (!namerSheet.includes("Name this person") || !namerSheet.includes('placeholder="Or type a name"')) {
+  console.error("Face namer must keep Name this person and the type-a-name field");
+  process.exit(1);
+}
+if (!cssSrc.includes(".face-namer") || !cssSrc.includes("@keyframes face-namer-rise")) {
+  console.error("Face namer must have .face-namer density and a short open rise");
+  process.exit(1);
+}
+const namerRowCss = cssSrc.match(/\.face-namer-row\s*\{[\s\S]*?\}/)?.[0] ?? "";
+if (!namerRowCss) {
+  console.error("index.css must style Face namer identity rows");
+  process.exit(1);
+}
+if (!namerRowCss.includes("--scout")) {
+  console.error("Face namer rows must wash with Helix --scout:", namerRowCss);
+  process.exit(1);
+}
+if (namerRowCss.includes("var(--face") || namerRowCss.includes("--face")) {
+  console.error("Face namer rows must not take this Face's color:", namerRowCss);
+  process.exit(1);
+}
+if (!namerRowCss.includes("height: 28px")) {
+  console.error("Face namer rows must match Outlook pick 28px density:", namerRowCss);
+  process.exit(1);
+}
+const namerRowFocusCss =
+  cssSrc.match(/\.face-namer-row:focus-visible\s*\{[\s\S]*?\}/)?.[0] ?? "";
+if (!namerRowFocusCss) {
+  console.error("Face namer recruit-row must have a :focus-visible keyboard ring");
+  process.exit(1);
+}
+if (namerRowFocusCss.includes("var(--face") || namerRowFocusCss.includes("--face")) {
+  console.error("Face namer Tab ring must not tint with --face:", namerRowFocusCss);
+  process.exit(1);
+}
+if (!namerRowFocusCss.includes("--scout")) {
+  console.error("Face namer :focus-visible ring must be Helix --scout chrome:", namerRowFocusCss);
+  process.exit(1);
+}
+const namerFocusOutline = namerRowFocusCss.match(/outline:\s*([^;]+)/)?.[1]?.trim() ?? "";
+if (!namerFocusOutline || /^(none|0(\s|$))/.test(namerFocusOutline)) {
+  console.error("focus-visible Face namer row must have a non-none outline:", namerRowFocusCss);
+  process.exit(1);
+}
+if (!/outline-offset:/.test(namerRowFocusCss)) {
+  console.error("focus-visible Face namer outline must have an offset:", namerRowFocusCss);
+  process.exit(1);
+}
+const namerRowHoverCss = cssSrc.match(/\.face-namer-row:hover\s*\{[\s\S]*?\}/)?.[0] ?? "";
+if (!namerRowHoverCss) {
+  console.error("Face namer row hover wash must remain");
+  process.exit(1);
+}
+if (/outline:/.test(namerRowHoverCss) || /box-shadow:/.test(namerRowHoverCss)) {
+  console.error("Face namer hover must stay a wash without a ring:", namerRowHoverCss);
+  process.exit(1);
+}
+if (!namerRowHoverCss.includes("--scout")) {
+  console.error("Face namer hover wash must stay --scout, not this Face:", namerRowHoverCss);
+  process.exit(1);
+}
+if (namerRowHoverCss.includes("var(--face") || namerRowHoverCss.includes("--face")) {
+  console.error("Face namer hover must not Face-tint:", namerRowHoverCss);
+  process.exit(1);
+}
+if (!cssSrc.includes(".face-namer-row:disabled")) {
+  console.error("disabled Browse as must stay quiet");
+  process.exit(1);
+}
+if (!/prefers-reduced-motion: reduce[\s\S]*\.face-namer-row/.test(cssSrc)) {
+  console.error("prefers-reduced-motion must kill the Face namer row rise");
+  process.exit(1);
+}
+if (
+  /prefers-reduced-motion: reduce[\s\S]*\.face-namer-row:focus-visible[\s\S]{0,120}outline:\s*none/.test(
+    cssSrc,
+  )
+) {
+  console.error("reduced-motion must not kill the Face namer recruit-row focus ring");
   process.exit(1);
 }
 if (

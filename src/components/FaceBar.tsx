@@ -393,21 +393,19 @@ function FaceNamer({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="face-menu">
+    <div className="face-menu face-namer">
       <div className="pane-kicker">Name this person</div>
       <p>Who you browse as in this window. They don't exist until you name them.</p>
-      <div className="face-roles">
-        {FACE_ROLES.map((role) => (
-          <button
-            key={role}
-            type="button"
-            className={`face-role${ready === role ? " on" : ""}`}
-            onClick={() => commit(role)}
-          >
-            {role}
-          </button>
-        ))}
-      </div>
+      {FACE_ROLES.map((role) => (
+        <button
+          key={role}
+          type="button"
+          className="face-namer-row"
+          onClick={() => commit(role)}
+        >
+          {role}
+        </button>
+      ))}
       <input
         autoFocus
         autoComplete="off"
@@ -423,7 +421,7 @@ function FaceNamer({ onClose }: { onClose: () => void }) {
       />
       <button
         type="button"
-        className="pal-item"
+        className="face-namer-row"
         disabled={!ready}
         onClick={() => commit()}
       >
