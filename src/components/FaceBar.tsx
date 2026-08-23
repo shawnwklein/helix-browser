@@ -281,15 +281,14 @@ export function FaceBar() {
       </div>
 
       {(menu === "outlook" || s.outlookPickerOpen) && !s.faceNamerOpen && (
-        <div className="face-menu">
-          <div className="pane-kicker">A locked identity</div>
+        <div className="face-menu outlook-pick">
+          <div className="pane-kicker">Another locked jar</div>
           <p>
-            Each Outlook Face is its own Chromium profile. Work and personal
-            Microsoft accounts never share cookies — and they stay in this
-            window.
+            Work and personal Microsoft never share cookies — each one is its
+            own Face in this window.
           </p>
           <button
-            className="pal-item"
+            className="outlook-pick-row"
             onClick={() => {
               s.addOutlook("outlook-work");
               setMenu(null);
@@ -300,7 +299,7 @@ export function FaceBar() {
             <kbd>office.com</kbd>
           </button>
           <button
-            className="pal-item"
+            className="outlook-pick-row"
             onClick={() => {
               s.addOutlook("outlook-personal");
               setMenu(null);

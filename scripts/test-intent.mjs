@@ -1213,6 +1213,106 @@ if (!faceBarSrc.includes("+ Outlook")) {
   console.error("FaceBar must keep + Outlook");
   process.exit(1);
 }
+const outlookSheet =
+  faceBarSrc.match(
+    /\(menu === "outlook" \|\| s\.outlookPickerOpen\)[\s\S]*?\{namerOpen &&/,
+  )?.[0] ?? "";
+if (!outlookSheet.includes("outlook-pick") || !outlookSheet.includes("outlook-pick-row")) {
+  console.error("Outlook picker must be stacked recruit rows, not a palette");
+  process.exit(1);
+}
+if (outlookSheet.includes("pal-item")) {
+  console.error("Outlook picker sheet must not use pal-item");
+  process.exit(1);
+}
+if (/profile/i.test(outlookSheet) || outlookSheet.includes("Chromium profile")) {
+  console.error("Outlook picker must not talk like a Chrome profile picker");
+  process.exit(1);
+}
+if (
+  !outlookSheet.includes('addOutlook("outlook-work")') ||
+  !outlookSheet.includes('addOutlook("outlook-personal")')
+) {
+  console.error("Outlook picker clicks must still addOutlook work / personal");
+  process.exit(1);
+}
+if (!outlookSheet.includes("Work or school") || !outlookSheet.includes("Personal Microsoft")) {
+  console.error("Outlook picker must keep Work or school / Personal Microsoft rows");
+  process.exit(1);
+}
+if (!outlookSheet.includes("setMenu(null)") || !outlookSheet.includes("setOutlookPickerOpen(false)")) {
+  console.error("Outlook picker must close after addOutlook");
+  process.exit(1);
+}
+if (!cssSrc.includes(".outlook-pick") || !cssSrc.includes("@keyframes outlook-pick-rise")) {
+  console.error("Outlook picker must have .outlook-pick density and a short open rise");
+  process.exit(1);
+}
+const pickRowCss = cssSrc.match(/\.outlook-pick-row\s*\{[\s\S]*?\}/)?.[0] ?? "";
+if (!pickRowCss) {
+  console.error("index.css must style Outlook picker recruit rows");
+  process.exit(1);
+}
+if (!pickRowCss.includes("--scout")) {
+  console.error("Outlook picker rows must wash with Helix --scout:", pickRowCss);
+  process.exit(1);
+}
+if (pickRowCss.includes("var(--face") || pickRowCss.includes("--face")) {
+  console.error("Outlook picker rows must not take this Face's color:", pickRowCss);
+  process.exit(1);
+}
+const pickRowFocusCss =
+  cssSrc.match(/\.outlook-pick-row:focus-visible\s*\{[\s\S]*?\}/)?.[0] ?? "";
+if (!pickRowFocusCss) {
+  console.error("Outlook picker recruit-row must have a :focus-visible keyboard ring");
+  process.exit(1);
+}
+if (pickRowFocusCss.includes("var(--face") || pickRowFocusCss.includes("--face")) {
+  console.error("Outlook picker Tab ring must not tint with --face:", pickRowFocusCss);
+  process.exit(1);
+}
+if (!pickRowFocusCss.includes("--scout")) {
+  console.error("Outlook picker :focus-visible ring must be Helix --scout chrome:", pickRowFocusCss);
+  process.exit(1);
+}
+const pickFocusOutline = pickRowFocusCss.match(/outline:\s*([^;]+)/)?.[1]?.trim() ?? "";
+if (!pickFocusOutline || /^(none|0(\s|$))/.test(pickFocusOutline)) {
+  console.error("focus-visible Outlook picker row must have a non-none outline:", pickRowFocusCss);
+  process.exit(1);
+}
+if (!/outline-offset:/.test(pickRowFocusCss)) {
+  console.error("focus-visible Outlook picker outline must have an offset:", pickRowFocusCss);
+  process.exit(1);
+}
+const pickRowHoverCss = cssSrc.match(/\.outlook-pick-row:hover\s*\{[\s\S]*?\}/)?.[0] ?? "";
+if (!pickRowHoverCss) {
+  console.error("Outlook picker row hover wash must remain");
+  process.exit(1);
+}
+if (/outline:/.test(pickRowHoverCss) || /box-shadow:/.test(pickRowHoverCss)) {
+  console.error("Outlook picker hover must stay a wash without a ring:", pickRowHoverCss);
+  process.exit(1);
+}
+if (!pickRowHoverCss.includes("--scout")) {
+  console.error("Outlook picker hover wash must stay --scout, not this Face:", pickRowHoverCss);
+  process.exit(1);
+}
+if (pickRowHoverCss.includes("var(--face") || pickRowHoverCss.includes("--face")) {
+  console.error("Outlook picker hover must not Face-tint:", pickRowHoverCss);
+  process.exit(1);
+}
+if (!/prefers-reduced-motion: reduce[\s\S]*\.outlook-pick-row/.test(cssSrc)) {
+  console.error("prefers-reduced-motion must kill the Outlook picker row rise");
+  process.exit(1);
+}
+if (
+  /prefers-reduced-motion: reduce[\s\S]*\.outlook-pick-row:focus-visible[\s\S]{0,120}outline:\s*none/.test(
+    cssSrc,
+  )
+) {
+  console.error("reduced-motion must not kill the Outlook picker recruit-row focus ring");
+  process.exit(1);
+}
 const restCss = cssSrc.match(/\.outlook-hero-btn\.rest\s*\{[\s\S]*?\}/)?.[0] ?? "";
 if (!restCss.includes("--face")) {
   console.error("Open inbox rest card must Face-tint with --face");
