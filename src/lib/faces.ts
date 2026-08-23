@@ -90,6 +90,12 @@ export function faceSwitchChord(index: number): string | null {
   return `Ctrl+Shift+${index + 1}`;
 }
 
+/** Compact ⌃⇧1…9 for receded Face pills. Same 0…8 / null rules as faceSwitchChord. */
+export function faceSwitchChordCompact(index: number): string | null {
+  if (!Number.isInteger(index) || index < 0 || index > 8) return null;
+  return `⌃⇧${index + 1}`;
+}
+
 /** Digit1 → 0 … Digit9 → 8. Digit0 and other codes → null. */
 export function faceIndexFromDigitCode(code: string): number | null {
   if (!code.startsWith("Digit")) return null;

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { FACE_ROLES, faceSwitchChord, normalizeFaceName } from "../lib/faces";
+import { FACE_ROLES, faceSwitchChord, faceSwitchChordCompact, normalizeFaceName } from "../lib/faces";
 import { activeFace, faceOf, useHelix } from "../store";
 
 export function FaceBar() {
@@ -61,12 +61,12 @@ export function FaceBar() {
     <div className="faces" ref={wrap}>
       {s.faces.map((f, i) => {
         const chord = faceSwitchChord(i);
+        const compact = faceSwitchChordCompact(i);
+        const on = f.id === s.activeFaceId;
         return (
           <button
-            key={f.id === s.activeFaceId && staying ? `${f.id}-stay-${stayTick}` : f.id}
-            className={`face-pill${f.id === s.activeFaceId ? " on" : ""}${
-              f.id === s.activeFaceId && staying ? " stay" : ""
-            }`}
+            key={on && staying ? `${f.id}-stay-${stayTick}` : f.id}
+            className={`face-pill${on ? " on" : ""}${on && staying ? " stay" : ""}`}
             style={{ ["--face" as string]: f.color }}
             title={`${f.name}${f.hint ? ` · ${f.hint}` : ""}${chord ? `  ${chord}` : ""}`}
             onClick={() => s.setActiveFace(f.id)}
@@ -79,8 +79,10 @@ export function FaceBar() {
           >
             <i className="face-dot" />
             <span className="face-name">{f.name}</span>
-            {s.faces.length > 1 && chord ? (
-              <kbd className="face-chord hide-narrow">{chord}</kbd>
+            {s.faces.length > 1 && chord && compact ? (
+              <kbd className={`face-chord hide-narrow${on ? "" : " compact"}`}>
+                {on ? chord : compact}
+              </kbd>
             ) : null}
             {f.kind.startsWith("outlook") && <span className="face-mail">@</span>}
           </button>

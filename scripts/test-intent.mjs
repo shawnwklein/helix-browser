@@ -69,13 +69,26 @@ if (/\.tabs\.filter\(\s*\(?t\)?\s*=>\s*t\.faceId\s*===\s*s\.activeFaceId/.test(c
 }
 if (
   !facesSrc.includes("export function faceSwitchChord") ||
+  !facesSrc.includes("export function faceSwitchChordCompact") ||
   !facesSrc.includes("export function faceIndexFromDigitCode")
 ) {
-  console.error("faces.ts must export faceSwitchChord and faceIndexFromDigitCode");
+  console.error("faces.ts must export faceSwitchChord, faceSwitchChordCompact, and faceIndexFromDigitCode");
   process.exit(1);
 }
 if (!faceBarSrc.includes("faceSwitchChord")) {
   console.error("FaceBar must advertise faceSwitchChord on pills");
+  process.exit(1);
+}
+if (!faceBarSrc.includes("faceSwitchChordCompact")) {
+  console.error("FaceBar receded pills must use faceSwitchChordCompact");
+  process.exit(1);
+}
+if (!/const currentChord =[\s\S]{0,160}faceSwitchChord\(/.test(faceBarSrc)) {
+  console.error("Browsing as kbd must stay full faceSwitchChord");
+  process.exit(1);
+}
+if (/const currentChord =[\s\S]{0,160}faceSwitchChordCompact/.test(faceBarSrc)) {
+  console.error("Browsing as must not use compact chords");
   process.exit(1);
 }
 if (faceBarSrc.includes("Ctrl+${i + 1}")) {
@@ -103,8 +116,31 @@ if (pillMap.includes("Ctrl+${i + 1}")) {
   console.error("in-pill chord must stay faceSwitchChord, not Ctrl+N");
   process.exit(1);
 }
+if (!/\$\{chord \? `  \$\{chord\}`/.test(pillMap)) {
+  console.error("pill title must keep full faceSwitchChord");
+  process.exit(1);
+}
+if (
+  /\$\{compact \? `  \$\{compact\}`/.test(pillMap) ||
+  /\$\{chord \? `  \$\{compact\}`/.test(pillMap)
+) {
+  console.error("pill title must not use compact chords");
+  process.exit(1);
+}
+if (!/on \? chord : compact/.test(pillMap)) {
+  console.error("receded in-pill kbd must use compact; lit kbd must stay full chord");
+  process.exit(1);
+}
+if (!/face-chord hide-narrow\$\{on \? "" : " compact"\}/.test(pillMap)) {
+  console.error("receded face-chord must add compact; lit pill must not");
+  process.exit(1);
+}
 if (!cssSrc.includes(".face-chord") || !cssSrc.includes(".face-pill.on .face-chord")) {
   console.error("index.css must style in-pill face-chord (quiet receded, Face-tinted on)");
+  process.exit(1);
+}
+if (!cssSrc.includes(".face-chord.compact")) {
+  console.error("index.css must style receded .face-chord.compact");
   process.exit(1);
 }
 if (!chromeSrc.includes("faceIndexFromDigitCode")) {
@@ -217,7 +253,7 @@ if (storeSrc.includes('title: "New thread"')) {
 }
 const runner = `
 import { looksLikeUrl, parseOmnibox, previewIntent, normalizeUrl, omniboxEnter, commitToIntent } from "./src/lib/intent.ts";
-import { resolveFaceClick, clusterTabsByFace, faceSwitchChord, faceIndexFromDigitCode, FACE_ROLES, normalizeFaceName, partitionFor, homeThreadTitle } from "./src/lib/faces.ts";
+import { resolveFaceClick, clusterTabsByFace, faceSwitchChord, faceSwitchChordCompact, faceIndexFromDigitCode, FACE_ROLES, normalizeFaceName, partitionFor, homeThreadTitle } from "./src/lib/faces.ts";
 import { STARTERS } from "./src/lib/starters.ts";
 
 const go = [
@@ -490,6 +526,26 @@ if (faceSwitchChord(8) !== "Ctrl+Shift+9") {
 }
 if (faceSwitchChord(9) !== null) {
   console.error("faceSwitchChord(9) must be null:", faceSwitchChord(9));
+  failed++;
+}
+if (faceSwitchChordCompact(0) !== "⌃⇧1") {
+  console.error("faceSwitchChordCompact(0) must be ⌃⇧1:", faceSwitchChordCompact(0));
+  failed++;
+}
+if (faceSwitchChordCompact(8) !== "⌃⇧9") {
+  console.error("faceSwitchChordCompact(8) must be ⌃⇧9:", faceSwitchChordCompact(8));
+  failed++;
+}
+if (faceSwitchChordCompact(9) !== null) {
+  console.error("faceSwitchChordCompact(9) must be null:", faceSwitchChordCompact(9));
+  failed++;
+}
+if (faceSwitchChordCompact(-1) !== null || faceSwitchChordCompact(2.5) !== null) {
+  console.error("faceSwitchChordCompact must use the same 0…8 / null rules as faceSwitchChord");
+  failed++;
+}
+if (faceSwitchChordCompact(1) === faceSwitchChord(1)) {
+  console.error("compact chord must not equal full Ctrl+Shift+N");
   failed++;
 }
 if (faceIndexFromDigitCode("Digit1") !== 0) {

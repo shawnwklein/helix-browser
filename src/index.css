@@ -138,6 +138,12 @@ a { color: var(--scout); }
   color: color-mix(in srgb, var(--face) 72%, var(--text));
   background: color-mix(in srgb, var(--face) 12%, transparent);
 }
+.face-chord.compact {
+  font-size: 8px;
+  height: 14px;
+  line-height: 13px;
+  padding: 0 3px;
+}
 .face-mail {
   font-family: var(--mono);
   font-size: 10px;
