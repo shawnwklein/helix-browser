@@ -119,6 +119,25 @@ a { color: var(--scout); }
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--face) 18%, transparent);
 }
 .face-name { max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+.face-chord {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0;
+  height: 16px;
+  line-height: 15px;
+  padding: 0 4px;
+  border-radius: 3px;
+  border: 1px solid var(--line);
+  color: var(--text-faint);
+  background: transparent;
+  flex-shrink: 0;
+}
+.face-pill.on .face-chord {
+  border-color: color-mix(in srgb, var(--face) 40%, transparent);
+  color: color-mix(in srgb, var(--face) 72%, var(--text));
+  background: color-mix(in srgb, var(--face) 12%, transparent);
+}
 .face-mail {
   font-family: var(--mono);
   font-size: 10px;

@@ -79,6 +79,9 @@ export function FaceBar() {
           >
             <i className="face-dot" />
             <span className="face-name">{f.name}</span>
+            {s.faces.length > 1 && chord ? (
+              <kbd className="face-chord hide-narrow">{chord}</kbd>
+            ) : null}
             {f.kind.startsWith("outlook") && <span className="face-mail">@</span>}
           </button>
         );

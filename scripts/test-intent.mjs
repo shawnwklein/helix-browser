@@ -86,6 +86,27 @@ if (!faceBarSrc.includes("<kbd") || !faceBarSrc.includes("s.faces.length > 1")) 
   console.error("Browsing as must show a kbd chord once a second Face exists");
   process.exit(1);
 }
+const pillMap = faceBarSrc.match(/s\.faces\.map\(\(f, i\) => \{[\s\S]*?<\/button>/)?.[0] ?? "";
+if (
+  !pillMap.includes("face-chord") ||
+  !pillMap.includes("<kbd") ||
+  !/s\.faces\.length > 1[\s\S]{0,120}<kbd/.test(pillMap)
+) {
+  console.error("Face pills must render a face-chord kbd once a second Face exists");
+  process.exit(1);
+}
+if (!pillMap.includes("hide-narrow")) {
+  console.error("in-pill face-chord must hide-narrow so 390px pills stay name-sized");
+  process.exit(1);
+}
+if (pillMap.includes("Ctrl+${i + 1}")) {
+  console.error("in-pill chord must stay faceSwitchChord, not Ctrl+N");
+  process.exit(1);
+}
+if (!cssSrc.includes(".face-chord") || !cssSrc.includes(".face-pill.on .face-chord")) {
+  console.error("index.css must style in-pill face-chord (quiet receded, Face-tinted on)");
+  process.exit(1);
+}
 if (!chromeSrc.includes("faceIndexFromDigitCode")) {
   console.error("Chrome Digit Face-switch must use faceIndexFromDigitCode");
   process.exit(1);
