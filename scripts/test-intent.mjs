@@ -1255,10 +1255,89 @@ if (genericHeroFocusCss) {
   );
   process.exit(1);
 }
+if ((constellationSrc.match(/className="outlook-hero-btn recruit"/g) || []).length !== 2) {
+  console.error("no-inbox two-up Add Outlook / Add another inbox must use recruit class");
+  process.exit(1);
+}
+const twoUpHero =
+  constellationSrc.match(/className="outlook-hero">[\s\S]*?<\/div>/)?.[0] ?? "";
+if (
+  !twoUpHero.includes("outlook-hero-btn recruit") ||
+  !twoUpHero.includes('addOutlook("outlook-work")') ||
+  !twoUpHero.includes('addOutlook("outlook-personal")')
+) {
+  console.error("no-inbox two-up must stay one-click addOutlook with recruit class");
+  process.exit(1);
+}
 const recedeHeroFocusCss =
   cssSrc.match(/\.outlook-hero-btn\.recede:focus-visible\s*\{[\s\S]*?\}/)?.[0] ?? "";
-if (recedeHeroFocusCss && recedeHeroFocusCss.includes("var(--face")) {
+if (!recedeHeroFocusCss) {
+  console.error("receded Add Outlook must have a :focus-visible keyboard ring");
+  process.exit(1);
+}
+if (recedeHeroFocusCss.includes("var(--face") || recedeHeroFocusCss.includes("--face")) {
   console.error("receded Add Outlook must not take a Face-tinted :focus-visible ring:", recedeHeroFocusCss);
+  process.exit(1);
+}
+if (!recedeHeroFocusCss.includes("--scout")) {
+  console.error("receded Add Outlook :focus-visible ring must be Helix --scout chrome:", recedeHeroFocusCss);
+  process.exit(1);
+}
+const recedeFocusOutline = recedeHeroFocusCss.match(/outline:\s*([^;]+)/)?.[1]?.trim() ?? "";
+if (!recedeFocusOutline || /^(none|0(\s|$))/.test(recedeFocusOutline)) {
+  console.error("focus-visible receded Add Outlook must have a non-none outline:", recedeHeroFocusCss);
+  process.exit(1);
+}
+if (!/outline-offset:/.test(recedeHeroFocusCss)) {
+  console.error("focus-visible receded Add Outlook outline must have an offset:", recedeHeroFocusCss);
+  process.exit(1);
+}
+const recruitHeroFocusCss =
+  cssSrc.match(/\.outlook-hero-btn\.recruit:focus-visible\s*\{[\s\S]*?\}/)?.[0] ?? "";
+if (!recruitHeroFocusCss) {
+  console.error("no-inbox two-up must have a :focus-visible keyboard ring");
+  process.exit(1);
+}
+if (recruitHeroFocusCss.includes("var(--face") || recruitHeroFocusCss.includes("--face")) {
+  console.error("no-inbox two-up must not take a Face-tinted :focus-visible ring:", recruitHeroFocusCss);
+  process.exit(1);
+}
+if (!recruitHeroFocusCss.includes("--scout")) {
+  console.error("no-inbox two-up :focus-visible ring must be Helix --scout chrome:", recruitHeroFocusCss);
+  process.exit(1);
+}
+const recruitFocusOutline = recruitHeroFocusCss.match(/outline:\s*([^;]+)/)?.[1]?.trim() ?? "";
+if (!recruitFocusOutline || /^(none|0(\s|$))/.test(recruitFocusOutline)) {
+  console.error("focus-visible two-up must have a non-none outline:", recruitHeroFocusCss);
+  process.exit(1);
+}
+if (!/outline-offset:/.test(recruitHeroFocusCss)) {
+  console.error("focus-visible two-up outline must have an offset:", recruitHeroFocusCss);
+  process.exit(1);
+}
+const recedeHeroHoverCss =
+  cssSrc.match(/\.outlook-hero-btn\.recede:hover\s*\{[\s\S]*?\}/)?.[0] ?? "";
+if (!recedeHeroHoverCss) {
+  console.error("receded Add Outlook hover wash must remain");
+  process.exit(1);
+}
+if (/outline:/.test(recedeHeroHoverCss) || /box-shadow:/.test(recedeHeroHoverCss)) {
+  console.error("receded Add Outlook hover must stay a wash without a ring:", recedeHeroHoverCss);
+  process.exit(1);
+}
+const recruitHoverCss =
+  cssSrc.match(/\.outlook-hero-btn\.recruit:hover\s*\{[\s\S]*?\}/)?.[0] ?? "";
+if (recruitHoverCss && (/outline:/.test(recruitHoverCss) || /box-shadow:/.test(recruitHoverCss))) {
+  console.error("no-inbox two-up hover must stay a wash without a ring:", recruitHoverCss);
+  process.exit(1);
+}
+const heroHoverCss = cssSrc.match(/\.outlook-hero-btn:hover\s*\{[\s\S]*?\}/)?.[0] ?? "";
+if (!heroHoverCss) {
+  console.error("outlook hero hover wash must remain");
+  process.exit(1);
+}
+if (/outline:/.test(heroHoverCss) || /box-shadow:/.test(heroHoverCss)) {
+  console.error("outlook hero hover must stay a wash without a ring:", heroHoverCss);
   process.exit(1);
 }
 if (
@@ -1267,6 +1346,22 @@ if (
   )
 ) {
   console.error("reduced-motion must not kill the inbox rest card focus ring");
+  process.exit(1);
+}
+if (
+  /prefers-reduced-motion: reduce[\s\S]*\.outlook-hero-btn\.recede:focus-visible[\s\S]{0,120}outline:\s*none/.test(
+    cssSrc,
+  )
+) {
+  console.error("reduced-motion must not kill the receded Add Outlook focus ring");
+  process.exit(1);
+}
+if (
+  /prefers-reduced-motion: reduce[\s\S]*\.outlook-hero-btn\.recruit:focus-visible[\s\S]{0,120}outline:\s*none/.test(
+    cssSrc,
+  )
+) {
+  console.error("reduced-motion must not kill the no-inbox two-up focus ring");
   process.exit(1);
 }
 if (!cssSrc.includes(".outlook-hero-btn.recede")) {

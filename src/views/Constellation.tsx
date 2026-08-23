@@ -170,7 +170,7 @@ export function Constellation() {
         ) : (
           <div className="outlook-hero">
             <button
-              className="outlook-hero-btn"
+              className="outlook-hero-btn recruit"
               onClick={() => s.addOutlook("outlook-work")}
             >
               <span className="kicker">Work or school</span>
@@ -178,7 +178,7 @@ export function Constellation() {
               <p>outlook.office.com · its own cookies, its own Face</p>
             </button>
             <button
-              className="outlook-hero-btn"
+              className="outlook-hero-btn recruit"
               onClick={() => s.addOutlook("outlook-personal")}
             >
               <span className="kicker">Personal Microsoft</span>

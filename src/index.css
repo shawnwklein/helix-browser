@@ -545,11 +545,19 @@ a { color: var(--scout); }
   border-color: var(--line-strong);
   background: var(--bg-3);
 }
+.outlook-hero-btn.recede:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--scout) 72%, white);
+  outline-offset: 1px;
+}
 .outlook-hero-btn.recede h3 {
   font-size: 18px;
   color: var(--text-dim);
 }
 .outlook-hero-btn.recede:hover h3 { color: var(--text); }
+.outlook-hero-btn.recruit:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--scout) 72%, white);
+  outline-offset: 1px;
+}
 .web-note {
   color: var(--text-faint);
   font-size: 12px;
