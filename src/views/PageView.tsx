@@ -20,7 +20,7 @@ export function PageView({ tab }: { tab: Tab }) {
       if (!el) return;
       const r = el.getBoundingClientRect();
       if (r.width < 4 || r.height < 4) return;
-      window.helix.setContentBounds({
+      window.helix?.setContentBounds({
         x: Math.round(r.left),
         y: Math.round(r.top),
         width: Math.round(r.width),

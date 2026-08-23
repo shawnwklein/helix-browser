@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { parseOmnibox, previewIntent } from "../lib/intent";
-import { activeFace, activeTab, faceOf, useHelix } from "../store";
+import { clusterTabsByFace, faceIndexFromDigitCode, faceSwitchChord } from "../lib/faces";
+import { commitToIntent, omniboxEnter, previewIntent, type Intent } from "../lib/intent";
+import { activeFace, activeTab, useHelix } from "../store";
 import { FaceBar } from "./FaceBar";
 import { HelixLogo } from "./HelixLogo";
 
@@ -9,6 +10,7 @@ export function Chrome() {
   const tab = activeTab(s);
   const streaming = Boolean(tab?.answer?.streaming);
   const input = useRef<HTMLInputElement>(null);
+  const tabsRef = useRef<HTMLDivElement>(null);
   const preview = previewIntent(s.omnibox);
   const [split, setSplit] = useState(false);
 
@@ -46,7 +48,8 @@ export function Chrome() {
         h.addOutlook("outlook-work");
       }
       if (meta && e.shiftKey && e.code.startsWith("Digit")) {
-        const face = h.faces[Number(e.code.slice(5)) - 1];
+        const index = faceIndexFromDigitCode(e.code);
+        const face = index == null ? undefined : h.faces[index];
         if (face) {
           e.preventDefault();
           h.setActiveFace(face.id);
@@ -55,6 +58,7 @@ export function Chrome() {
       if (e.key === "Escape") {
         h.setCommandOpen(false);
         h.setSettingsOpen(false);
+        setSplit(false);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -65,49 +69,107 @@ export function Chrome() {
     if (s.omniboxFocus) input.current?.focus();
   }, [s.omniboxFocus]);
 
-  const submit = (forced?: ReturnType<typeof parseOmnibox>) => {
+  useEffect(() => {
+    const current = tabsRef.current?.querySelector<HTMLElement>(".tab-cluster.current");
+    if (!current) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    current.scrollIntoView({ inline: "nearest", block: "nearest", behavior: reduce ? "auto" : "smooth" });
+  }, [s.activeFaceId, s.activeId]);
+
+  const submit = (forced?: Intent) => {
     const raw = (input.current?.value ?? s.omnibox).trim();
     if (!raw) return;
-    setSplit(false);
-    let intent = forced || previewIntent(raw);
-    if (intent.type === "ambiguous") {
-      intent = { type: "go", url: intent.url };
+    if (forced) {
+      const intent = commitToIntent(forced);
+      if (!intent) return;
+      setSplit(false);
+      s.submitOmnibox(raw, intent);
+      input.current?.blur();
+      return;
     }
+    const commit = omniboxEnter(raw, { chooserOpen: split });
+    const intent = commitToIntent(commit);
+    if (!intent) {
+      setSplit(true);
+      return;
+    }
+    setSplit(false);
     s.submitOmnibox(raw, intent);
     input.current?.blur();
   };
 
   const face = activeFace(s);
+  const clusters = clusterTabsByFace(s.faces, s.tabs);
+  const labeled = clusters.length > 1;
+  const currentHasCluster = clusters.some((c) => c.face.id === s.activeFaceId);
 
   return (
     <header className="chrome">
       <FaceBar />
-      <div className="tabs">
-        {s.tabs.map((t) => (
-          <div
-            key={t.id}
-            className={`tab${t.id === s.activeId ? " active" : ""}${t.isFork ? " fork" : ""}`}
-            style={{ ["--face" as string]: faceOf(s, t.faceId)?.color }}
-            onClick={() => s.activate(t.id)}
-            title={`${t.title} · ${faceOf(s, t.faceId)?.name || ""}`}
-          >
-            <TabGlyph kind={t.kind} fork={t.isFork} url={t.url} />
-            <span className="tab-title">{t.title}</span>
-            <button
-              className="tab-x"
-              aria-label="Close tab"
-              onClick={(e) => {
-                e.stopPropagation();
-                s.closeTab(t.id);
-              }}
+      <div className="tabs" ref={tabsRef}>
+        {clusters.map((cluster) => {
+          const current = cluster.face.id === s.activeFaceId;
+          const chord = faceSwitchChord(
+            s.faces.findIndex((f) => f.id === cluster.face.id),
+          );
+          return (
+            <div
+              key={cluster.face.id}
+              className={`tab-cluster${current ? " current" : ""}${labeled ? "" : " solo"}`}
+              style={{ ["--face" as string]: cluster.face.color }}
+              role="group"
+              aria-label={cluster.face.name}
             >
-              ×
-            </button>
-          </div>
-        ))}
-        <button className="tab-add" onClick={s.newTab} title="New tab">
-          +
-        </button>
+              {labeled && (
+                <button
+                  type="button"
+                  className="tab-cluster-kicker"
+                  title={`Browse as ${cluster.face.name}${chord ? `  ${chord}` : ""}`}
+                  onClick={() => s.setActiveFace(cluster.face.id)}
+                >
+                  <i className="face-dot" />
+                  <span>{cluster.face.name}</span>
+                </button>
+              )}
+              {cluster.tabs.map((t) => (
+                <div
+                  key={t.id}
+                  className={`tab${t.id === s.activeId ? " active" : ""}${t.isFork ? " fork" : ""}`}
+                  style={{ ["--face" as string]: cluster.face.color }}
+                  onClick={() => s.activate(t.id)}
+                  title={`${t.title} · ${cluster.face.name}`}
+                >
+                  <TabGlyph kind={t.kind} fork={t.isFork} url={t.url} />
+                  <span className="tab-title">{t.title}</span>
+                  <button
+                    className="tab-x"
+                    aria-label="Close tab"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      s.closeTab(t.id);
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              {current && (
+                <button
+                  className="tab-add"
+                  onClick={() => s.newTab(cluster.face.id)}
+                  title="New tab"
+                >
+                  +
+                </button>
+              )}
+            </div>
+          );
+        })}
+        {!currentHasCluster && (
+          <button className="tab-add" onClick={() => s.newTab()} title="New tab">
+            +
+          </button>
+        )}
       </div>
       <div className="toolbar">
         <button className="ico" onClick={s.toggleContinuum} title="Continuum">
@@ -123,7 +185,7 @@ export function Chrome() {
           ↻
         </button>
         <form
-          className="omnibox"
+          className={`omnibox${split ? " split-open" : ""}`}
           onSubmit={(e) => {
             e.preventDefault();
             submit();
@@ -161,37 +223,54 @@ export function Chrome() {
           />
           <button
             type="submit"
-            className={`intent-hint ${preview.type === "go" ? "go" : "ask"}`}
+            className={`intent-hint ${preview.type === "go" ? "go" : "ask"}${split ? " open" : ""}`}
+            aria-expanded={preview.type === "ambiguous" ? split : undefined}
+            aria-haspopup={preview.type === "ambiguous" ? "listbox" : undefined}
           >
             {preview.type === "go"
               ? "Go"
               : preview.type === "command"
                 ? "Command"
                 : preview.type === "ambiguous"
-                  ? "Ask or go"
+                  ? split
+                    ? "Ask"
+                    : "Ask or go"
                   : "Ask"}
           </button>
           {split && preview.type === "ambiguous" && (
-            <div className="intent-split">
+            <div className="intent-split" role="listbox" aria-label="Ask or go">
               <button
                 type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  submit({ type: "go", url: preview.url });
-                }}
-              >
-                <b>Go to {preview.url.replace(/^https?:\/\//, "")}</b>
-                <span>Open as a Chromium page</span>
-              </button>
-              <button
-                type="button"
+                className="ask-default"
+                role="option"
+                aria-selected="true"
                 onMouseDown={(e) => {
                   e.preventDefault();
                   submit({ type: "ask", query: preview.text });
                 }}
               >
-                <b>Ask Grok about {preview.text}</b>
+                <b>
+                  Ask Grok about {preview.text}
+                  <kbd className="enter-hint">Enter</kbd>
+                </b>
                 <span>Research with the live web and X</span>
+              </button>
+              <button
+                type="button"
+                className="go-as-face"
+                role="option"
+                aria-selected="false"
+                style={{ ["--face" as string]: face?.color }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  submit({ type: "go", url: preview.url });
+                }}
+              >
+                <b>
+                  Go to {preview.url.replace(/^https?:\/\//, "")} as{" "}
+                  <i className="as-face">{face?.name}</i>
+                </b>
+                <span>This Face’s Chromium — cookies stay here</span>
               </button>
             </div>
           )}

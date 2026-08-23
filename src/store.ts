@@ -3,11 +3,14 @@ import { extractUrl, fetchStatus, streamGrok } from "./lib/client";
 import { rememberEcho } from "./lib/echo";
 import {
   defaultFaces,
+  homeThreadTitle,
   nextFaceColor,
+  normalizeFaceName,
   outlookLabel,
   OUTLOOK_PERSONAL,
   OUTLOOK_WORK,
   partitionFor,
+  resolveFaceClick,
 } from "./lib/faces";
 import { parseOmnibox, type Intent } from "./lib/intent";
 import {
@@ -27,8 +30,20 @@ function nid() {
   return crypto.randomUUID();
 }
 
-function homeTab(faceId: string): Tab {
-  return { id: nid(), kind: "home", title: "New thread", faceId };
+function homeTab(faceId: string, name?: string | null): Tab {
+  return { id: nid(), kind: "home", title: homeThreadTitle(name), faceId };
+}
+
+function faceNameOf(faces: Face[], faceId: string): string | undefined {
+  return faces.find((f) => f.id === faceId)?.name;
+}
+
+function titledHomeTabs(tabs: Tab[], faces: Face[]): Tab[] {
+  return tabs.map((t) =>
+    t.kind === "home"
+      ? { ...t, title: homeThreadTitle(faceNameOf(faces, t.faceId)) }
+      : t,
+  );
 }
 
 function showLive(tab: Tab, faces: Face[], force = false) {
@@ -72,11 +87,13 @@ type HelixState = {
   mind: MindMessage[];
   commandOpen: boolean;
   settingsOpen: boolean;
+  faceNamerOpen: boolean;
   omnibox: string;
   omniboxFocus: boolean;
   hasKey: boolean;
   demo: boolean;
   model: string;
+  faceStayPulse: number;
   boot: () => Promise<void>;
   persist: () => void;
   submitOmnibox: (raw: string, intent?: Intent) => void;
@@ -98,6 +115,7 @@ type HelixState = {
   setMindMode: (m: MindMode) => void;
   setCommandOpen: (v: boolean) => void;
   setSettingsOpen: (v: boolean) => void;
+  setFaceNamerOpen: (v: boolean) => void;
   setActiveFace: (id: string) => void;
   addOutlook: (kind: "outlook-work" | "outlook-personal") => void;
   addFace: (name?: string) => void;
@@ -118,9 +136,13 @@ const initialFaceId =
   persisted?.activeFaceId && initialFaces.some((f) => f.id === persisted.activeFaceId)
     ? persisted.activeFaceId
     : initialFaces[0].id;
-const initialTabs = (
-  persisted?.tabs?.length ? persisted.tabs : [homeTab(initialFaceId)]
-).map((t) => ({ ...t, faceId: t.faceId || initialFaceId }));
+const initialTabs = titledHomeTabs(
+  (persisted?.tabs?.length
+    ? persisted.tabs
+    : [homeTab(initialFaceId, faceNameOf(initialFaces, initialFaceId))]
+  ).map((t) => ({ ...t, faceId: t.faceId || initialFaceId })),
+  initialFaces,
+);
 const initialActive =
   persisted?.activeId && initialTabs.some((t) => t.id === persisted.activeId)
     ? persisted.activeId
@@ -147,11 +169,13 @@ export const useHelix = create<HelixState>((set, get) => ({
   mind: [],
   commandOpen: false,
   settingsOpen: false,
+  faceNamerOpen: false,
   omnibox: "",
   omniboxFocus: false,
   hasKey: false,
   demo: true,
   model: "grok-4.6",
+  faceStayPulse: 0,
 
   persist: () => {
     const s = get();
@@ -176,6 +200,8 @@ export const useHelix = create<HelixState>((set, get) => ({
 
   boot: async () => {
     await get().refreshStatus();
+    set((s) => ({ tabs: titledHomeTabs(s.tabs, s.faces) }));
+    get().persist();
     const desktop = window.helix;
     if (desktop) {
       desktop.onPageEvent((ev) => {
@@ -254,10 +280,11 @@ export const useHelix = create<HelixState>((set, get) => ({
   setMindMode: (mindMode) => set({ mindMode }),
   setCommandOpen: (commandOpen) => set({ commandOpen }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
+  setFaceNamerOpen: (faceNamerOpen) => set({ faceNamerOpen }),
 
   newTab: (faceId) => {
     const id = faceId || get().activeFaceId;
-    const tab = homeTab(id);
+    const tab = homeTab(id, faceNameOf(get().faces, id));
     set((s) => ({
       tabs: [...s.tabs, tab],
       activeId: tab.id,
@@ -272,7 +299,7 @@ export const useHelix = create<HelixState>((set, get) => ({
   closeTab: (id) => {
     const { tabs, activeId, activeFaceId } = get();
     if (tabs.length === 1) {
-      const tab = homeTab(activeFaceId);
+      const tab = homeTab(activeFaceId, faceNameOf(get().faces, activeFaceId));
       set({ tabs: [tab], activeId: tab.id, omnibox: "" });
       window.helix?.closePage(id);
       window.helix?.hidePage();
@@ -645,10 +672,20 @@ export const useHelix = create<HelixState>((set, get) => ({
   setActiveFace: (id) => {
     const face = get().faces.find((f) => f.id === id);
     if (!face) return;
-    const owned = [...get().tabs].reverse().find((t) => t.faceId === id);
+    const { tabs, activeFaceId, activeId } = get();
+    const click = resolveFaceClick({
+      faceId: id,
+      activeFaceId,
+      activeId,
+      tabs,
+    });
+    if (click.kind === "stay") {
+      set({ faceStayPulse: get().faceStayPulse + 1 });
+      return;
+    }
     set({ activeFaceId: id });
-    if (owned) get().activate(owned.id);
-    else get().newTab(id);
+    if (click.kind === "activate") get().activate(click.tabId);
+    else get().newTab(click.faceId);
     get().persist();
   },
 
@@ -671,26 +708,35 @@ export const useHelix = create<HelixState>((set, get) => ({
   },
 
   addFace: (name) => {
+    const named = normalizeFaceName(name);
+    if (!named) {
+      set({ faceNamerOpen: true });
+      return;
+    }
     const faces = get().faces;
     const id = nid();
     const face: Face = {
       id,
-      name: name || `Face ${faces.length + 1}`,
+      name: named,
       color: nextFaceColor(faces),
       kind: "general",
       partition: partitionFor(id),
       createdAt: Date.now(),
     };
-    set({ faces: [...faces, face], activeFaceId: id });
+    set({ faces: [...faces, face], activeFaceId: id, faceNamerOpen: false });
     get().newTab(id);
     get().persist();
   },
 
   renameFace: (id, name) => {
-    const trimmed = name.trim();
+    const trimmed = normalizeFaceName(name);
     if (!trimmed) return;
+    const title = homeThreadTitle(trimmed);
     set((s) => ({
       faces: s.faces.map((f) => (f.id === id ? { ...f, name: trimmed } : f)),
+      tabs: s.tabs.map((t) =>
+        t.kind === "home" && t.faceId === id ? { ...t, title } : t,
+      ),
     }));
     get().persist();
   },
@@ -710,7 +756,9 @@ export const useHelix = create<HelixState>((set, get) => ({
     const doomed = tabs.filter((t) => t.faceId === id);
     doomed.forEach((t) => window.helix?.closePage(t.id));
     const nextTabs = tabs.filter((t) => t.faceId !== id);
-    const remaining = nextTabs.length ? nextTabs : [homeTab(fallback)];
+    const remaining = nextTabs.length
+      ? nextTabs
+      : [homeTab(fallback, faceNameOf(faces, fallback))];
     const nextActive =
       remaining.find((t) => t.id === activeId)?.id || remaining[0].id;
     set({

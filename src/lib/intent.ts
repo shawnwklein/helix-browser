@@ -50,6 +50,49 @@ export function previewIntent(input: string): Intent {
   return { type: "ask", query: t };
 }
 
+/** What the omnibox does on Enter. Ambiguous tokens open a chooser; a second Enter Asks. */
+export type OmniboxCommit =
+  | { action: "chooser" }
+  | { action: "ask"; query: string }
+  | { action: "go"; url: string }
+  | { action: "command"; command: string; args: string };
+
+export function omniboxEnter(
+  input: string,
+  opts: { chooserOpen?: boolean; forceAsk?: boolean } = {},
+): OmniboxCommit {
+  const t = input.trim();
+  if (opts.forceAsk) return { action: "ask", query: t };
+  const preview = previewIntent(t);
+  if (preview.type === "ambiguous") {
+    if (opts.chooserOpen) return { action: "ask", query: preview.text };
+    return { action: "chooser" };
+  }
+  if (preview.type === "go") return { action: "go", url: preview.url };
+  if (preview.type === "command") {
+    return { action: "command", command: preview.command, args: preview.args };
+  }
+  return { action: "ask", query: preview.query };
+}
+
+export type SubmittedIntent = Exclude<Intent, { type: "ambiguous" }>;
+
+/** Chooser and preview-ambiguous stay in the UI. Ask / Go / command become store Intents. */
+export function commitToIntent(
+  commit: OmniboxCommit | Intent,
+): SubmittedIntent | null {
+  if ("action" in commit) {
+    if (commit.action === "chooser") return null;
+    if (commit.action === "go") return { type: "go", url: commit.url };
+    if (commit.action === "command") {
+      return { type: "command", command: commit.command, args: commit.args };
+    }
+    return { type: "ask", query: commit.query };
+  }
+  if (commit.type === "ambiguous") return null;
+  return commit;
+}
+
 export function hostOf(url?: string) {
   if (!url) return "";
   try {

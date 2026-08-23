@@ -1,7 +1,7 @@
 {
   "name": "helix",
   "productName": "Helix",
-  "version": "0.2.2",
+  "version": "0.2.11",
   "private": true,
   "description": "Helix is a Grok-native Chromium browser that treats the web as an argument, not a feed.",
   "author": "Helix",

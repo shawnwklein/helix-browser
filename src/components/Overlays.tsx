@@ -19,7 +19,7 @@ export function CommandPalette() {
         label: "Add personal Microsoft Outlook",
         run: () => s.addOutlook("outlook-personal"),
       },
-      { k: "face", label: "New Face", run: () => s.addFace() },
+      { k: "face", label: "New Face", run: () => s.setFaceNamerOpen(true) },
       { k: "continuum", label: "Toggle Continuum", run: s.toggleContinuum },
       { k: "mind", label: "Toggle Split Mind", run: s.toggleMind },
       { k: "settings", label: "Settings / API key", run: () => s.setSettingsOpen(true) },

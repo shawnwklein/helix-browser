@@ -1,19 +1,53 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { HelixLogo } from "../components/HelixLogo";
-import { parseOmnibox } from "../lib/intent";
+import { commitToIntent, omniboxEnter, previewIntent, type Intent } from "../lib/intent";
 import { STARTERS } from "../lib/starters";
-import { useHelix } from "../store";
+import { activeFace, useHelix } from "../store";
 
 export function Constellation() {
   const s = useHelix();
   const [q, setQ] = useState("");
+  const [split, setSplit] = useState(false);
+  const preview = previewIntent(q);
+  const face = activeFace(s);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSplit(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const submit = (forced?: Intent) => {
+    const raw = q.trim();
+    if (!raw) return;
+    if (forced) {
+      const intent = commitToIntent(forced);
+      if (!intent) return;
+      setSplit(false);
+      s.submitOmnibox(raw, intent);
+      return;
+    }
+    const commit = omniboxEnter(raw, { chooserOpen: split });
+    const intent = commitToIntent(commit);
+    if (!intent) {
+      setSplit(true);
+      return;
+    }
+    setSplit(false);
+    s.submitOmnibox(raw, intent);
+  };
 
   return (
-    <div className="constellation">
+    <div
+      className="constellation"
+      style={{ ["--face" as string]: face?.color }}
+    >
       <div className="hero">
         <div className="logo-row">
-          <HelixLogo size={28} />
-          Helix · Grok-native Chromium
+          <i className="face-dot" />
+          Browsing as <b>{face?.name}</b>
         </div>
         <h1>
           Read the web
@@ -21,36 +55,90 @@ export function Constellation() {
           <em>with a spine.</em>
         </h1>
         <p className="lede">
-          Faces are who you are on the web — Chrome profiles, rebuilt. Each
-          Outlook account is a locked Chromium identity in this same window.
-          Grok still sits on the other strand: Scout, Skeptic, Fork.
+          This thread is <b>{face?.name}</b>’s — cookies locked to this Face,
+          same window. Grok is the other strand: Scout, Skeptic, Fork.
         </p>
         <form
-          className="ask-field"
+          className={`ask-field${split ? " split-open" : ""}`}
           onSubmit={(e) => {
             e.preventDefault();
-            const raw = q.trim();
-            if (!raw) return;
-            s.submitOmnibox(raw, parseOmnibox(raw));
+            submit();
           }}
         >
           <HelixLogo />
           <input
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => {
+              setQ(e.target.value);
+              setSplit(false);
+            }}
             placeholder="A real question, or a URL"
             autoFocus
+            spellCheck={false}
             onKeyDown={(e) => {
               if (e.key !== "Enter") return;
               e.preventDefault();
-              const raw = q.trim();
-              if (!raw) return;
-              s.submitOmnibox(raw, parseOmnibox(raw));
+              e.stopPropagation();
+              if (e.metaKey || e.ctrlKey) {
+                submit({ type: "ask", query: q.trim() });
+              } else {
+                submit();
+              }
             }}
           />
-          <button className="ask-go" type="submit">
-            {parseOmnibox(q).type === "go" ? "Go" : "Ask"}
+          <button
+            className="ask-go"
+            type="submit"
+            aria-expanded={preview.type === "ambiguous" ? split : undefined}
+            aria-haspopup={preview.type === "ambiguous" ? "listbox" : undefined}
+          >
+            {preview.type === "go"
+              ? "Go"
+              : preview.type === "command"
+                ? "Command"
+                : preview.type === "ambiguous"
+                  ? split
+                    ? "Ask"
+                    : "Ask or go"
+                  : "Ask"}
           </button>
+          {split && preview.type === "ambiguous" && (
+            <div className="intent-split" role="listbox" aria-label="Ask or go">
+              <button
+                type="button"
+                className="ask-default"
+                role="option"
+                aria-selected="true"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  submit({ type: "ask", query: preview.text });
+                }}
+              >
+                <b>
+                  Ask Grok about {preview.text}
+                  <kbd className="enter-hint">Enter</kbd>
+                </b>
+                <span>Research with the live web and X</span>
+              </button>
+              <button
+                type="button"
+                className="go-as-face"
+                role="option"
+                aria-selected="false"
+                style={{ ["--face" as string]: face?.color }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  submit({ type: "go", url: preview.url });
+                }}
+              >
+                <b>
+                  Go to {preview.url.replace(/^https?:\/\//, "")} as{" "}
+                  <i className="as-face">{face?.name}</i>
+                </b>
+                <span>This Face’s Chromium — cookies stay here</span>
+              </button>
+            </div>
+          )}
         </form>
         <div className="outlook-hero">
           <button
