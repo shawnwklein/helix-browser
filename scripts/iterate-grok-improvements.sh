@@ -623,7 +623,7 @@ EOF
 
 Constraints:
 - Ship working product in this cycle. No speculative refactors.
-- Do not regress Face partitions, Outlook add-account, tab-switch-without-reload, or Grok demo-orbit honesty.
+- Do not regress Face partitions, Outlook add-account, tab-switch-without-reload, Grok demo-orbit honesty, or omnibox URL navigation (Enter on a URL must load the page). `node scripts/test-intent.mjs` must pass.
 - Additive Faces/settings only. Do not wipe existing identities or tabs.
 - \`npm run build\` must pass (Vite renderer + esbuild API bundle).
 - Bump \`package.json\` version (and lockfile root version) when you ship user-facing work. Patch for UX; minor if you add a new Face or Grok surface. Do not git tag unless asked (the loop tags when started with --auto-release).
@@ -839,6 +839,13 @@ run_validation() {
     failed=1
   fi
   tail -n 40 "$log" || true
+
+  echo | tee -a "$log"
+  echo "=== omnibox intent ===" | tee -a "$log"
+  if ! node scripts/test-intent.mjs >>"$log" 2>&1; then
+    failed=1
+  fi
+  tail -n 20 "$log" || true
 
   if [[ "$failed" -ne 0 ]] || grep -E -q 'error TS[0-9]+|Failed to compile|Type error:|ELIFECYCLE|AssertionError|ERR_ASSERTION' "$log"; then
     echo "VALIDATION: FAILED (see $log)" >&2

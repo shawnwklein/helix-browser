@@ -335,6 +335,10 @@ a { color: var(--scout); }
   text-transform: uppercase;
   color: var(--text-faint);
   white-space: nowrap;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  flex: 0 0 auto;
 }
 .intent-hint.go { color: var(--skeptic); }
 .intent-hint.ask { color: var(--scout); }

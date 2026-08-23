@@ -358,17 +358,33 @@ export const useHelix = create<HelixState>((set, get) => ({
   navigate: (url, inPlace, faceId) => {
     const { tabs, activeId, faces, activeFaceId } = get();
     const fid = faceId || activeFaceId;
+    let href = url.trim();
+    try {
+      href = new URL(href).href;
+    } catch {
+      try {
+        href = new URL(`https://${href}`).href;
+      } catch {
+        return;
+      }
+    }
     const active = tabs.find((t) => t.id === activeId);
     const reuse =
       inPlace ||
       ((active?.kind === "page" || active?.kind === "home") &&
         (!faceId || active.faceId === faceId));
     const id = reuse && active ? active.id : nid();
+    let title = href;
+    try {
+      title = new URL(href).hostname.replace(/^www\./, "") || href;
+    } catch {
+      /* keep href */
+    }
     const tab: Tab = {
       id,
       kind: "page",
-      title: new URL(url).hostname.replace(/^www\./, ""),
-      url,
+      title,
+      url: href,
       faceId: fid,
       viewMode: "live",
     };
@@ -378,11 +394,11 @@ export const useHelix = create<HelixState>((set, get) => ({
         : [...s.tabs, tab],
       activeId: id,
       activeFaceId: fid,
-      omnibox: url,
+      omnibox: href,
     }));
     showLive(tab, faces, true);
     get().persist();
-    extractUrl(url)
+    extractUrl(href)
       .then((extract) => {
         set((s) => ({
           tabs: s.tabs.map((t) =>
@@ -392,7 +408,7 @@ export const useHelix = create<HelixState>((set, get) => ({
           ),
           echoes: rememberEcho(s.echoes, {
             title: extract.title,
-            url,
+            url: href,
             claims: extract.excerpt ? [extract.excerpt] : [],
           }),
         }));

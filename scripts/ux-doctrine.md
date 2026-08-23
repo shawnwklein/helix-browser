@@ -70,6 +70,7 @@ Stay darkroom / copper / ice. CSS and SVG. Do not replace the helix mark with a 
 - Electron + Vite + React. `electron/main.mjs` is the main process. Renderer talks through `window.helix`.
 - Page tabs use `WebContentsView` with **per-Face** `partition`. Do not collapse Faces onto a single `persist:helix` session.
 - Do not reload a live page when merely switching tabs (`showPage` force flag). Outlook login popups need the same partition (`about:blank` allow; http(s) → new tab in that Face).
+- **Omnibox URL Enter must navigate.** Typing `google.com` / `https://outlook.office.com` and pressing Enter (or Go) loads a Chromium page in the current Face. Never no-op. Do not swallow Enter. Do not send a URL to Ask unless the user pressed Ctrl/Cmd+Enter. `node scripts/test-intent.mjs` must stay green.
 - Packaged app serves `dist/` plus `/api` from the local host in `electron/host.mjs`. Key stays off the page world (`XAI_API_KEY` / Settings / `x-helix-key`).
 - Grok is SpaceXAI / xAI only (`https://api.x.ai/v1`, grok-4.6). Demo orbit must not invent live citations.
 - Persistence key `helix:v2` in `src/store.ts`. Additive Faces/tabs only; do not wipe existing identities.

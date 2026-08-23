@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { HelixLogo } from "../components/HelixLogo";
+import { parseOmnibox } from "../lib/intent";
 import { STARTERS } from "../lib/starters";
 import { useHelix } from "../store";
 
@@ -28,7 +29,9 @@ export function Constellation() {
           className="ask-field"
           onSubmit={(e) => {
             e.preventDefault();
-            if (q.trim()) s.submitOmnibox(q);
+            const raw = q.trim();
+            if (!raw) return;
+            s.submitOmnibox(raw, parseOmnibox(raw));
           }}
         >
           <HelixLogo />
@@ -37,9 +40,16 @@ export function Constellation() {
             onChange={(e) => setQ(e.target.value)}
             placeholder="A real question, or a URL"
             autoFocus
+            onKeyDown={(e) => {
+              if (e.key !== "Enter") return;
+              e.preventDefault();
+              const raw = q.trim();
+              if (!raw) return;
+              s.submitOmnibox(raw, parseOmnibox(raw));
+            }}
           />
           <button className="ask-go" type="submit">
-            Ask
+            {parseOmnibox(q).type === "go" ? "Go" : "Ask"}
           </button>
         </form>
         <div className="outlook-hero">

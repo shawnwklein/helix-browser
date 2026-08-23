@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import type { Tab } from "../lib/types";
 import { hostOf } from "../lib/intent";
 import { useHelix } from "../store";
@@ -9,15 +9,17 @@ export function PageView({ tab }: { tab: Tab }) {
   const live = tab.viewMode !== "reader";
   const slot = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!desktop) return;
     const send = () => {
       const el = slot.current;
-      if (!el || !live) {
+      if (!live) {
         window.helix?.hidePage();
         return;
       }
+      if (!el) return;
       const r = el.getBoundingClientRect();
+      if (r.width < 4 || r.height < 4) return;
       window.helix.setContentBounds({
         x: Math.round(r.left),
         y: Math.round(r.top),
@@ -33,7 +35,7 @@ export function PageView({ tab }: { tab: Tab }) {
       ro.disconnect();
       window.removeEventListener("resize", send);
     };
-  }, [desktop, live, tab.id, s.continuumOpen, s.mindOpen]);
+  }, [desktop, live, tab.id, tab.url, s.continuumOpen, s.mindOpen]);
 
   return (
     <div className="page">

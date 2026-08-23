@@ -56,17 +56,38 @@ function activeView() {
   return visibleTab ? pages.get(visibleTab)?.view : null;
 }
 
+function effectiveBounds() {
+  if (bounds && bounds.width > 10 && bounds.height > 10) return bounds;
+  if (!win) return null;
+  const [w, h] = win.getContentSize();
+  const top = 132;
+  return { x: 0, y: top, width: w, height: Math.max(80, h - top) };
+}
+
 function layout() {
   if (!win) return;
   const rec = visibleTab ? pages.get(visibleTab) : null;
   const view = rec?.view;
+  const box = effectiveBounds();
   for (const [id, r] of pages) {
-    const show = Boolean(view && id === visibleTab && bounds && bounds.width > 4);
+    const show = Boolean(view && id === visibleTab && box && box.width > 4);
     const children = win.contentView.children || [];
     const attached = children.includes(r.view);
-    if (show && !attached) win.contentView.addChildView(r.view);
-    if (!show && attached) win.contentView.removeChildView(r.view);
-    if (show) r.view.setBounds(bounds);
+    if (show) {
+      if (attached) {
+        try {
+          win.contentView.removeChildView(r.view);
+        } catch {
+          /* restack */
+        }
+      }
+      win.contentView.addChildView(r.view);
+      r.view.setBounds(box);
+      if (typeof r.view.setVisible === "function") r.view.setVisible(true);
+    } else if (attached) {
+      win.contentView.removeChildView(r.view);
+      if (typeof r.view.setVisible === "function") r.view.setVisible(false);
+    }
   }
 }
 

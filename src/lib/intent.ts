@@ -7,15 +7,18 @@ export type Intent =
 export function normalizeUrl(raw: string) {
   const t = raw.trim();
   if (/^https?:\/\//i.test(t)) return t;
+  if (/^about:/i.test(t) || /^file:/i.test(t) || /^data:/i.test(t)) return t;
   if (/^localhost(:\d+)?([/?#].*)?$/i.test(t)) return `http://${t}`;
+  if (/^\d{1,3}(\.\d{1,3}){3}(:\d+)?([/?#].*)?$/.test(t)) return `http://${t}`;
   return `https://${t}`;
 }
 
 export function looksLikeUrl(s: string) {
   const t = s.trim();
   if (!t || /\s/.test(t)) return false;
-  if (/^https?:\/\//i.test(t)) return true;
+  if (/^(https?|about|file|data):/i.test(t)) return true;
   if (/^localhost(:\d+)?([/?#].*)?$/i.test(t)) return true;
+  if (/^\d{1,3}(\.\d{1,3}){3}(:\d+)?([/?#].*)?$/.test(t)) return true;
   if (/^[a-z0-9.-]+\.[a-z]{2,}([/:?#].*)?$/i.test(t)) return true;
   return false;
 }

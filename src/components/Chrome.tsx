@@ -66,8 +66,14 @@ export function Chrome() {
   }, [s.omniboxFocus]);
 
   const submit = (forced?: ReturnType<typeof parseOmnibox>) => {
+    const raw = (input.current?.value ?? s.omnibox).trim();
+    if (!raw) return;
     setSplit(false);
-    s.submitOmnibox(s.omnibox, forced);
+    let intent = forced || previewIntent(raw);
+    if (intent.type === "ambiguous") {
+      intent = { type: "go", url: intent.url };
+    }
+    s.submitOmnibox(raw, intent);
     input.current?.blur();
   };
 
@@ -120,10 +126,6 @@ export function Chrome() {
           className="omnibox"
           onSubmit={(e) => {
             e.preventDefault();
-            if (preview.type === "ambiguous") {
-              setSplit(true);
-              return;
-            }
             submit();
           }}
         >
@@ -147,13 +149,18 @@ export function Chrome() {
             onFocus={() => s.setOmniboxFocus(true)}
             onBlur={() => s.setOmniboxFocus(false)}
             onKeyDown={(e) => {
-              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                e.preventDefault();
-                submit({ type: "ask", query: s.omnibox.trim() });
+              if (e.key !== "Enter") return;
+              e.preventDefault();
+              e.stopPropagation();
+              if (e.metaKey || e.ctrlKey) {
+                submit({ type: "ask", query: (input.current?.value ?? s.omnibox).trim() });
+              } else {
+                submit();
               }
             }}
           />
-          <span
+          <button
+            type="submit"
             className={`intent-hint ${preview.type === "go" ? "go" : "ask"}`}
           >
             {preview.type === "go"
@@ -163,7 +170,7 @@ export function Chrome() {
                 : preview.type === "ambiguous"
                   ? "Ask or go"
                   : "Ask"}
-          </span>
+          </button>
           {split && preview.type === "ambiguous" && (
             <div className="intent-split">
               <button
