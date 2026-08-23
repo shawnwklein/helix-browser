@@ -80,6 +80,13 @@ export function FaceBar() {
   const namerOpen = menu === "add" || s.faceNamerOpen;
   const outlookOpen = menu === "outlook" || s.outlookPickerOpen;
   const overflowOpen = menu === "overflow";
+  const editorOpen =
+    Boolean(menu) &&
+    menu !== "outlook" &&
+    menu !== "add" &&
+    menu !== "overflow" &&
+    !s.faceNamerOpen &&
+    !s.outlookPickerOpen;
 
   const closeMenus = () => {
     setMenu(null);
@@ -100,7 +107,7 @@ export function FaceBar() {
   }, []);
 
   useEffect(() => {
-    if (!namerOpen && !outlookOpen && !overflowOpen) return;
+    if (!namerOpen && !outlookOpen && !overflowOpen && !editorOpen) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       e.preventDefault();
@@ -110,7 +117,7 @@ export function FaceBar() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [namerOpen, outlookOpen, overflowOpen]);
+  }, [namerOpen, outlookOpen, overflowOpen, editorOpen]);
 
   useEffect(() => {
     if (menu === "overflow") return;
@@ -344,6 +351,11 @@ export function FaceBar() {
                   s.setActiveFace(f.id);
                   holdOverflowForLeave(f.id);
                 }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setRename(f.name);
+                  setMenu(f.id);
+                }}
               >
                 <span className="face-overflow-who">
                   <i className="face-dot" />
@@ -359,7 +371,7 @@ export function FaceBar() {
         </div>
       )}
 
-      {menu && menu !== "outlook" && menu !== "add" && menu !== "overflow" && !s.faceNamerOpen && !s.outlookPickerOpen && (
+      {editorOpen && menu && (
         <FaceEditor
           faceId={menu}
           name={rename}
@@ -446,14 +458,23 @@ function FaceEditor({
   const face = faceOf(s, faceId);
   if (!face) return null;
   return (
-    <div className="face-menu">
-      <div className="pane-kicker">Face</div>
+    <div
+      className="face-menu face-editor"
+      style={{ ["--face" as string]: face.color }}
+    >
+      <div className="pane-kicker">
+        <i className="face-dot" />
+        {face.name}
+      </div>
+      <p>Cookies stay locked to {face.name} in this window.</p>
       <input
         autoFocus
+        autoComplete="off"
         value={name}
         onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
+            e.preventDefault();
             s.renameFace(faceId, name);
             onClose();
           }
@@ -461,7 +482,8 @@ function FaceEditor({
         placeholder="Name this person"
       />
       <button
-        className="pal-item"
+        type="button"
+        className="face-editor-row"
         onClick={() => {
           s.renameFace(faceId, name);
           onClose();
@@ -471,7 +493,8 @@ function FaceEditor({
       </button>
       {face.homeUrl && (
         <button
-          className="pal-item"
+          type="button"
+          className="face-editor-row"
           onClick={() => {
             s.openFaceHome(faceId);
             onClose();
@@ -482,13 +505,14 @@ function FaceEditor({
       )}
       {s.faces.length > 1 && (
         <button
-          className="pal-item"
+          type="button"
+          className="face-editor-row"
           onClick={() => {
             s.removeFace(faceId);
             onClose();
           }}
         >
-          Remove face
+          Remove {face.name}
         </button>
       )}
     </div>

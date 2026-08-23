@@ -524,8 +524,26 @@ if (
   console.error("overflow rows must remount with settle when that id is in overflowSettleIds");
   process.exit(1);
 }
-if (overflowSheet.includes("setMenu(null)") || overflowSheet.includes("setMenu(")) {
-  console.error("overflow row click must not close N more in the same handler");
+const overflowClick = overflowSheet.match(/onClick=\{\(\) => \{[\s\S]*?\}\}/)?.[0] ?? "";
+if (!overflowClick.includes("setActiveFace") || !overflowClick.includes("holdOverflowForLeave")) {
+  console.error("overflow row click must setActiveFace and holdOverflowForLeave");
+  process.exit(1);
+}
+if (overflowClick.includes("setMenu") || overflowClick.includes("setRename")) {
+  console.error("overflow row click must not close N more or open the editor in the same handler");
+  process.exit(1);
+}
+const overflowContext = overflowSheet.match(/onContextMenu=\{\(e\) => \{[\s\S]*?\}\}/)?.[0] ?? "";
+if (
+  !overflowContext.includes("e.preventDefault()") ||
+  !overflowContext.includes("setRename(f.name)") ||
+  !overflowContext.includes("setMenu(f.id)")
+) {
+  console.error("overflow row context menu must open this Face's editor without pinning first");
+  process.exit(1);
+}
+if (overflowContext.includes("setActiveFace") || overflowContext.includes("holdOverflowForLeave")) {
+  console.error("overflow context menu must not setActiveFace or hold the sheet as a become");
   process.exit(1);
 }
 if (!overflowSheet.includes("holdOverflowForLeave")) {
@@ -1194,6 +1212,175 @@ if (
   )
 ) {
   console.error("reduced-motion must not kill the Face namer recruit-row focus ring");
+  process.exit(1);
+}
+const editorSheet = faceBarSrc.match(/function FaceEditor[\s\S]*$/)?.[0] ?? "";
+if (!editorSheet) {
+  console.error("FaceBar must keep FaceEditor as its own sheet");
+  process.exit(1);
+}
+if (!editorSheet.includes("face-editor") || !editorSheet.includes("face-editor-row")) {
+  console.error("Face editor must be stacked identity rows, not a palette");
+  process.exit(1);
+}
+if (editorSheet.includes("pal-item")) {
+  console.error("Face editor sheet must not use pal-item");
+  process.exit(1);
+}
+if (/profile/i.test(editorSheet) || editorSheet.includes("Chromium profile")) {
+  console.error("Face editor must not talk like a Chrome profile picker");
+  process.exit(1);
+}
+if (editorSheet.includes(">Face<") || editorSheet.includes('pane-kicker">Face')) {
+  console.error("Face editor kicker must be this person's name, not Face");
+  process.exit(1);
+}
+if (!editorSheet.includes("face-dot") || !editorSheet.includes("{face.name}")) {
+  console.error("Face editor kicker must wear a Face-dot and this person's name");
+  process.exit(1);
+}
+if (
+  !/pane-kicker[\s\S]{0,160}face-dot[\s\S]{0,80}\{face\.name\}/.test(editorSheet)
+) {
+  console.error("Face editor kicker must be Face-dot + {face.name}, not a generic pane label");
+  process.exit(1);
+}
+if (!editorSheet.includes('["--face" as string]: face.color')) {
+  console.error("Face editor sheet must set --face from this person");
+  process.exit(1);
+}
+if (!editorSheet.includes("locked") || !/cookie/i.test(editorSheet)) {
+  console.error("Face editor must say this person's cookies stay locked in this window");
+  process.exit(1);
+}
+if (
+  !editorSheet.includes("s.renameFace(faceId, name)") ||
+  !editorSheet.includes('e.key === "Enter"') ||
+  !editorSheet.includes("Save name")
+) {
+  console.error("Face editor must still renameFace on Enter / Save name");
+  process.exit(1);
+}
+if (
+  !editorSheet.includes("face.homeUrl") ||
+  !editorSheet.includes("s.openFaceHome(faceId)") ||
+  !editorSheet.includes("Open inbox")
+) {
+  console.error("Face editor Open inbox must stay gated on homeUrl and call openFaceHome");
+  process.exit(1);
+}
+if (
+  !editorSheet.includes("s.faces.length > 1") ||
+  !editorSheet.includes("s.removeFace(faceId)") ||
+  !editorSheet.includes("Remove {face.name}")
+) {
+  console.error("Face editor must removeFace only with a second Face, as Remove {name}");
+  process.exit(1);
+}
+if (
+  !faceBarSrc.includes("editorOpen") ||
+  !faceBarSrc.includes("!namerOpen && !outlookOpen && !overflowOpen && !editorOpen") ||
+  !faceBarSrc.includes("[namerOpen, outlookOpen, overflowOpen, editorOpen]")
+) {
+  console.error("Face editor must close on Escape like namer / Outlook pick");
+  process.exit(1);
+}
+if (!faceBarSrc.includes("editorOpen && menu")) {
+  console.error("Face editor sheet must still open from the pill context menu");
+  process.exit(1);
+}
+if (!cssSrc.includes(".face-editor") || !cssSrc.includes("@keyframes face-editor-rise")) {
+  console.error("Face editor must have .face-editor density and a short open rise");
+  process.exit(1);
+}
+const editorKickerCss =
+  cssSrc.match(/\.face-editor \.pane-kicker\s*\{[\s\S]*?\}/)?.[0] ?? "";
+if (!editorKickerCss) {
+  console.error("Face editor kicker must restyle as identity, not a generic pane label");
+  process.exit(1);
+}
+if (
+  /text-transform:\s*uppercase/.test(editorKickerCss) ||
+  !/text-transform:\s*none/.test(editorKickerCss)
+) {
+  console.error("Face editor kicker must not stay a generic uppercase pane label:", editorKickerCss);
+  process.exit(1);
+}
+if (/letter-spacing:\s*0\.16em/.test(editorKickerCss)) {
+  console.error("Face editor kicker must drop pane-kicker tracking:", editorKickerCss);
+  process.exit(1);
+}
+if (!editorKickerCss.includes("display: flex") || !editorKickerCss.includes("align-items: center")) {
+  console.error("Face editor kicker must sit Face-dot + name as identity:", editorKickerCss);
+  process.exit(1);
+}
+const editorRowCss = cssSrc.match(/\.face-editor-row\s*\{[\s\S]*?\}/)?.[0] ?? "";
+if (!editorRowCss) {
+  console.error("index.css must style Face editor identity rows");
+  process.exit(1);
+}
+if (!editorRowCss.includes("--face")) {
+  console.error("Face editor rows must wash with this person's --face:", editorRowCss);
+  process.exit(1);
+}
+if (editorRowCss.includes("--scout")) {
+  console.error("Face editor rows must not wash with --scout:", editorRowCss);
+  process.exit(1);
+}
+if (!editorRowCss.includes("height: 28px")) {
+  console.error("Face editor rows must match namer / Outlook pick 28px density:", editorRowCss);
+  process.exit(1);
+}
+const editorRowFocusCss =
+  cssSrc.match(/\.face-editor-row:focus-visible\s*\{[\s\S]*?\}/)?.[0] ?? "";
+if (!editorRowFocusCss) {
+  console.error("Face editor identity row must have a :focus-visible keyboard ring");
+  process.exit(1);
+}
+if (!editorRowFocusCss.includes("--face")) {
+  console.error("Face editor :focus-visible ring must tint with --face:", editorRowFocusCss);
+  process.exit(1);
+}
+if (editorRowFocusCss.includes("--scout")) {
+  console.error("Face editor Tab ring must not be Helix --scout chrome:", editorRowFocusCss);
+  process.exit(1);
+}
+const editorFocusOutline = editorRowFocusCss.match(/outline:\s*([^;]+)/)?.[1]?.trim() ?? "";
+if (!editorFocusOutline || /^(none|0(\s|$))/.test(editorFocusOutline)) {
+  console.error("focus-visible Face editor row must have a non-none outline:", editorRowFocusCss);
+  process.exit(1);
+}
+if (!/outline-offset:/.test(editorRowFocusCss)) {
+  console.error("focus-visible Face editor outline must have an offset:", editorRowFocusCss);
+  process.exit(1);
+}
+const editorRowHoverCss = cssSrc.match(/\.face-editor-row:hover\s*\{[\s\S]*?\}/)?.[0] ?? "";
+if (!editorRowHoverCss) {
+  console.error("Face editor row hover wash must remain");
+  process.exit(1);
+}
+if (/outline:/.test(editorRowHoverCss) || /box-shadow:/.test(editorRowHoverCss)) {
+  console.error("Face editor hover must stay a wash without a ring:", editorRowHoverCss);
+  process.exit(1);
+}
+if (!editorRowHoverCss.includes("--face")) {
+  console.error("Face editor hover wash must stay --face, not --scout:", editorRowHoverCss);
+  process.exit(1);
+}
+if (editorRowHoverCss.includes("--scout")) {
+  console.error("Face editor hover must not scout-tint:", editorRowHoverCss);
+  process.exit(1);
+}
+if (!/prefers-reduced-motion: reduce[\s\S]*\.face-editor-row/.test(cssSrc)) {
+  console.error("prefers-reduced-motion must kill the Face editor row rise");
+  process.exit(1);
+}
+if (
+  /prefers-reduced-motion: reduce[\s\S]*\.face-editor-row:focus-visible[\s\S]{0,120}outline:\s*none/.test(
+    cssSrc,
+  )
+) {
+  console.error("reduced-motion must not kill the Face editor identity-row focus ring");
   process.exit(1);
 }
 if (
