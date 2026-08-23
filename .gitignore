@@ -1,0 +1,10 @@
+node_modules
+dist
+dist-electron
+release
+.env
+.helix-key
+*.log
+.DS_Store
+scripts/shots
+electron/helix-api.mjs

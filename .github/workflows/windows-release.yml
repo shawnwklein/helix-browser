@@ -1,0 +1,64 @@
+name: Windows release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag"
+        default: "v0.1.0"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build Windows EXEs
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npm run dist:win
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: helix-windows
+          path: |
+            release/*.exe
+            release/*.yml
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
+          name: Helix ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
+          draft: false
+          generate_release_notes: true
+          body: |
+            **Helix** is a Grok-native Chromium browser for Windows.
+
+            ### Download
+            - **Helix-0.1.0-portable.exe** — no installer, run it
+            - **Helix Setup 0.1.0.exe** — NSIS installer
+
+            Windows SmartScreen may warn because the build is unsigned. Choose **More info → Run anyway**.
+
+            Paste an xAI key in Settings (the Demo orbit pill) for live Grok. Without a key, Helix runs in demo orbit.
+          files: |
+            release/*.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

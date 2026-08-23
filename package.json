@@ -1,0 +1,90 @@
+{
+  "name": "helix",
+  "productName": "Helix",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Helix is a Grok-native Chromium browser that treats the web as an argument, not a feed.",
+  "author": "Helix",
+  "license": "MIT",
+  "homepage": "https://github.com/shawnwklein/helix-browser",
+  "type": "module",
+  "main": "electron/main.mjs",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5173",
+    "web": "vite --host 0.0.0.0 --port 5173",
+    "desktop": "concurrently -k \"vite --host 127.0.0.1 --port 5173 --strictPort\" \"wait-on http://127.0.0.1:5173 && electron .\"",
+    "build:api": "esbuild server/api.ts --bundle --platform=node --format=esm --outfile=electron/helix-api.mjs --packages=external",
+    "build": "vite build && npm run build:api",
+    "preview": "vite preview --host 0.0.0.0 --port 5173",
+    "dist:win": "npm run build && electron-builder --win --x64 --publish never",
+    "icon": "python3 build/make-icon.py"
+  },
+  "dependencies": {
+    "@mozilla/readability": "^0.5.0",
+    "jsdom": "^25.0.1"
+  },
+  "devDependencies": {
+    "@types/jsdom": "^21.1.7",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.2",
+    "electron": "^33.3.1",
+    "electron-builder": "^25.1.8",
+    "esbuild": "^0.25.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-markdown": "^9.0.3",
+    "remark-gfm": "^4.0.0",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.7",
+    "wait-on": "^8.0.3",
+    "zustand": "^5.0.3"
+  },
+  "build": {
+    "appId": "com.helix.browser",
+    "productName": "Helix",
+    "copyright": "Helix",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "build/icon.png",
+      "package.json"
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "**/node_modules/jsdom/**",
+      "**/node_modules/@mozilla/readability/**"
+    ],
+    "win": {
+      "icon": "build/icon.png",
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        },
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "portable": {
+      "artifactName": "Helix-${version}-portable.exe"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "shortcutName": "Helix",
+      "uninstallDisplayName": "Helix",
+      "artifactName": "Helix-Setup-${version}.exe",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
+}
