@@ -8,3 +8,5 @@ release
 .DS_Store
 scripts/shots
 electron/helix-api.mjs
+iterations/**/*.log
+iterations/**/*-validation.log

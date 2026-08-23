@@ -63,6 +63,18 @@ npm run desktop        # Electron wrapping Chromium
 
 Without a key, Helix stays in **demo orbit**: the chrome is real, the fusion starter is a canned research object that does not pretend to be live, and Settings will take a key for the session.
 
+## Improve Helix in a loop
+
+A compounding Grok loop invents UX from the real UI and pushes Faces (multi-Outlook identities) plus Grok-in-the-chrome:
+
+```bash
+./scripts/iterate-grok-improvements.sh --dry-run -n 2 --focus faces
+./scripts/iterate-grok-improvements.sh --iterations 6 --focus faces --unattended --no-effort
+./scripts/iterate-grok-improvements.sh -n 4 --focus faces --unattended --auto-release --no-effort
+```
+
+See [scripts/README-iterations.md](scripts/README-iterations.md). Standing rules: [scripts/ux-doctrine.md](scripts/ux-doctrine.md).
+
 ### Shortcuts
 
 | | |
