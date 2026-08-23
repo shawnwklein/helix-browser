@@ -11,6 +11,8 @@ import {
   OUTLOOK_WORK,
   partitionFor,
   resolveFaceClick,
+  resolveFaceClose,
+  resolveFaceHome,
 } from "./lib/faces";
 import { parseOmnibox, type Intent } from "./lib/intent";
 import {
@@ -88,6 +90,7 @@ type HelixState = {
   commandOpen: boolean;
   settingsOpen: boolean;
   faceNamerOpen: boolean;
+  outlookPickerOpen: boolean;
   omnibox: string;
   omniboxFocus: boolean;
   hasKey: boolean;
@@ -101,7 +104,7 @@ type HelixState = {
   newTab: (faceId?: string) => void;
   closeTab: (id: string) => void;
   activate: (id: string) => void;
-  navigate: (url: string, inPlace?: boolean, faceId?: string) => void;
+  navigate: (url: string, inPlace?: boolean | "new", faceId?: string) => void;
   setViewMode: (mode: "live" | "reader") => void;
   startResearch: (query: string, opts?: { replace?: boolean; fork?: boolean; claim?: string }) => void;
   followUp: (query: string) => void;
@@ -116,6 +119,7 @@ type HelixState = {
   setCommandOpen: (v: boolean) => void;
   setSettingsOpen: (v: boolean) => void;
   setFaceNamerOpen: (v: boolean) => void;
+  setOutlookPickerOpen: (v: boolean) => void;
   setActiveFace: (id: string) => void;
   addOutlook: (kind: "outlook-work" | "outlook-personal") => void;
   addFace: (name?: string) => void;
@@ -170,6 +174,7 @@ export const useHelix = create<HelixState>((set, get) => ({
   commandOpen: false,
   settingsOpen: false,
   faceNamerOpen: false,
+  outlookPickerOpen: false,
   omnibox: "",
   omniboxFocus: false,
   hasKey: false,
@@ -281,6 +286,12 @@ export const useHelix = create<HelixState>((set, get) => ({
   setCommandOpen: (commandOpen) => set({ commandOpen }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
   setFaceNamerOpen: (faceNamerOpen) => set({ faceNamerOpen }),
+  setOutlookPickerOpen: (outlookPickerOpen) =>
+    set(
+      outlookPickerOpen
+        ? { outlookPickerOpen, faceNamerOpen: false }
+        : { outlookPickerOpen },
+    ),
 
   newTab: (faceId) => {
     const id = faceId || get().activeFaceId;
@@ -298,23 +309,36 @@ export const useHelix = create<HelixState>((set, get) => ({
 
   closeTab: (id) => {
     const { tabs, activeId, activeFaceId } = get();
-    if (tabs.length === 1) {
-      const tab = homeTab(activeFaceId, faceNameOf(get().faces, activeFaceId));
-      set({ tabs: [tab], activeId: tab.id, omnibox: "" });
-      window.helix?.closePage(id);
-      window.helix?.hidePage();
+    if (!tabs.some((t) => t.id === id)) return;
+    const close = resolveFaceClose({
+      closedId: id,
+      activeId,
+      activeFaceId,
+      tabs,
+    });
+    const remaining = tabs.filter((t) => t.id !== id);
+    window.helix?.closePage(id);
+    if (close.kind === "idle") {
+      set({ tabs: remaining });
       get().persist();
       return;
     }
-    const i = tabs.findIndex((t) => t.id === id);
-    const next = tabs.filter((t) => t.id !== id);
-    const fallback = next[Math.max(0, i - 1)] || next[0];
-    set({
-      tabs: next,
-      activeId: activeId === id ? fallback.id : activeId,
-    });
-    window.helix?.closePage(id);
-    get().persist();
+    if (close.kind === "activate") {
+      set({ tabs: remaining });
+      get().activate(close.tabId);
+      return;
+    }
+    if (close.kind === "mintHome") {
+      const tab = homeTab(close.faceId, faceNameOf(get().faces, close.faceId));
+      set({
+        tabs: [...remaining, tab],
+        activeId: tab.id,
+        activeFaceId: close.faceId,
+        omnibox: "",
+      });
+      window.helix?.hidePage();
+      get().persist();
+    }
   },
 
   activate: (id) => {
@@ -397,8 +421,9 @@ export const useHelix = create<HelixState>((set, get) => ({
     }
     const active = tabs.find((t) => t.id === activeId);
     const reuse =
-      inPlace ||
-      ((active?.kind === "page" || active?.kind === "home") &&
+      inPlace === true ||
+      (inPlace !== "new" &&
+        (active?.kind === "page" || active?.kind === "home") &&
         (!faceId || active.faceId === faceId));
     const id = reuse && active ? active.id : nid();
     let title = href;
@@ -703,7 +728,7 @@ export const useHelix = create<HelixState>((set, get) => ({
       homeUrl: kind === "outlook-work" ? OUTLOOK_WORK : OUTLOOK_PERSONAL,
       createdAt: Date.now(),
     };
-    set({ faces: [...faces, face], activeFaceId: id });
+    set({ faces: [...faces, face], activeFaceId: id, outlookPickerOpen: false });
     get().navigate(face.homeUrl!, false, id);
     get().persist();
   },
@@ -774,9 +799,16 @@ export const useHelix = create<HelixState>((set, get) => ({
   openFaceHome: (id) => {
     const face = get().faces.find((f) => f.id === id);
     if (!face) return;
+    const dest = resolveFaceHome({
+      face,
+      activeId: get().activeId,
+      tabs: get().tabs,
+    });
     set({ activeFaceId: id });
-    if (face.homeUrl) get().navigate(face.homeUrl, false, id);
-    else get().newTab(id);
+    if (dest.kind === "activate") get().activate(dest.tabId);
+    else if (dest.kind === "reuse") get().navigate(dest.url, true, id);
+    else if (dest.kind === "newTab") get().navigate(dest.url, "new", id);
+    else if (dest.kind === "newHome") get().newTab(dest.faceId);
   },
 
   goBack: () => window.helix?.goBack(),

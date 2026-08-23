@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { clusterTabsByFace, faceIndexFromDigitCode, faceSwitchChord } from "../lib/faces";
+import { clusterTabLayout, clusterTabsByFace, faceIndexFromDigitCode, faceSwitchChord } from "../lib/faces";
 import { commitToIntent, omniboxEnter, previewIntent, type Intent } from "../lib/intent";
 import { activeFace, activeTab, useHelix } from "../store";
 import { FaceBar } from "./FaceBar";
@@ -76,6 +76,19 @@ export function Chrome() {
     current.scrollIntoView({ inline: "nearest", block: "nearest", behavior: reduce ? "auto" : "smooth" });
   }, [s.activeFaceId, s.activeId]);
 
+  const [stayTick, setStayTick] = useState(0);
+  useEffect(() => {
+    if (!s.faceStayPulse) return;
+    setStayTick(0);
+    const frame = requestAnimationFrame(() => setStayTick(s.faceStayPulse));
+    const t = window.setTimeout(() => setStayTick(0), 480);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(t);
+    };
+  }, [s.faceStayPulse]);
+  const staying = stayTick > 0;
+
   const submit = (forced?: Intent) => {
     const raw = (input.current?.value ?? s.omnibox).trim();
     if (!raw) return;
@@ -109,13 +122,14 @@ export function Chrome() {
       <div className="tabs" ref={tabsRef}>
         {clusters.map((cluster) => {
           const current = cluster.face.id === s.activeFaceId;
+          const layout = clusterTabLayout({ labeled, current });
           const chord = faceSwitchChord(
             s.faces.findIndex((f) => f.id === cluster.face.id),
           );
           return (
             <div
               key={cluster.face.id}
-              className={`tab-cluster${current ? " current" : ""}${labeled ? "" : " solo"}`}
+              className={`tab-cluster${current ? " current" : ""}${labeled ? "" : " solo"}${layout === "fold" ? " fold" : ""}`}
               style={{ ["--face" as string]: cluster.face.color }}
               role="group"
               aria-label={cluster.face.name}
@@ -123,7 +137,8 @@ export function Chrome() {
               {labeled && (
                 <button
                   type="button"
-                  className="tab-cluster-kicker"
+                  key={current && staying ? `${cluster.face.id}-stay-${stayTick}` : cluster.face.id}
+                  className={`tab-cluster-kicker${current && staying ? " stay" : ""}`}
                   title={`Browse as ${cluster.face.name}${chord ? `  ${chord}` : ""}`}
                   onClick={() => s.setActiveFace(cluster.face.id)}
                 >
@@ -136,6 +151,7 @@ export function Chrome() {
                   key={t.id}
                   className={`tab${t.id === s.activeId ? " active" : ""}${t.isFork ? " fork" : ""}`}
                   style={{ ["--face" as string]: cluster.face.color }}
+                  tabIndex={layout === "fold" ? 0 : undefined}
                   onClick={() => s.activate(t.id)}
                   title={`${t.title} · ${cluster.face.name}`}
                 >
@@ -193,11 +209,13 @@ export function Chrome() {
         >
           <HelixLogo spinning={streaming} />
           <span
-            className="omnibox-face"
+            key={staying ? `omnibox-face-stay-${stayTick}` : "omnibox-face"}
+            className={`omnibox-face${staying ? " stay" : ""}`}
             style={{ ["--face" as string]: face?.color }}
             title={face?.name}
           >
-            {face?.name}
+            <i className="face-dot" />
+            <span>{face?.name}</span>
           </span>
           <input
             ref={input}

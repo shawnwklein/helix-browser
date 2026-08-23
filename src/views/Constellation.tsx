@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { HelixLogo } from "../components/HelixLogo";
 import { commitToIntent, omniboxEnter, previewIntent, type Intent } from "../lib/intent";
 import { STARTERS } from "../lib/starters";
+import { tabIsFaceInbox } from "../lib/faces";
 import { activeFace, useHelix } from "../store";
 
 export function Constellation() {
@@ -10,6 +11,7 @@ export function Constellation() {
   const [split, setSplit] = useState(false);
   const preview = previewIntent(q);
   const face = activeFace(s);
+  const inboxOpen = Boolean(face && s.tabs.some((t) => tabIsFaceInbox(t, face)));
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -140,24 +142,51 @@ export function Constellation() {
             </div>
           )}
         </form>
-        <div className="outlook-hero">
-          <button
-            className="outlook-hero-btn"
-            onClick={() => s.addOutlook("outlook-work")}
-          >
-            <span className="kicker">Work or school</span>
-            <h3>Add Outlook</h3>
-            <p>outlook.office.com · its own cookies, its own Face</p>
-          </button>
-          <button
-            className="outlook-hero-btn"
-            onClick={() => s.addOutlook("outlook-personal")}
-          >
-            <span className="kicker">Personal Microsoft</span>
-            <h3>Add another inbox</h3>
-            <p>outlook.live.com · sits beside work, never inside it</p>
-          </button>
-        </div>
+        {face?.homeUrl ? (
+          <div className="outlook-hero has-inbox">
+            <button
+              className="outlook-hero-btn rest"
+              onClick={() => s.openFaceHome(face.id)}
+            >
+              <span className="kicker">{face.name}</span>
+              <h3>{inboxOpen ? "Back to inbox" : "Open inbox"}</h3>
+              <p>
+                {face.homeUrl
+                  .replace(/^https?:\/\//, "")
+                  .replace(/\/mail\/?$/, "")
+                  .replace(/\/$/, "")}{" "}
+                · already this Face
+              </p>
+            </button>
+            <button
+              className="outlook-hero-btn recede"
+              onClick={() => s.setOutlookPickerOpen(true)}
+            >
+              <span className="kicker">Work or personal</span>
+              <h3>Add Outlook</h3>
+              <p>Another locked jar — same sheet as + Outlook</p>
+            </button>
+          </div>
+        ) : (
+          <div className="outlook-hero">
+            <button
+              className="outlook-hero-btn"
+              onClick={() => s.addOutlook("outlook-work")}
+            >
+              <span className="kicker">Work or school</span>
+              <h3>Add Outlook</h3>
+              <p>outlook.office.com · its own cookies, its own Face</p>
+            </button>
+            <button
+              className="outlook-hero-btn"
+              onClick={() => s.addOutlook("outlook-personal")}
+            >
+              <span className="kicker">Personal Microsoft</span>
+              <h3>Add another inbox</h3>
+              <p>outlook.live.com · sits beside work, never inside it</p>
+            </button>
+          </div>
+        )}
         {!window.helix && (
           <p className="web-note">
             Full account isolation needs the Helix desktop app. This web preview
