@@ -8,7 +8,8 @@ contextBridge.exposeInMainWorld("helix", {
   reload: () => ipcRenderer.send("helix:reload"),
   stop: () => ipcRenderer.send("helix:stop"),
   setContentBounds: (rect) => ipcRenderer.send("helix:bounds", rect),
-  showPage: (tabId, url) => ipcRenderer.send("helix:show", { tabId, url }),
+  showPage: (tabId, url, partition, force) =>
+    ipcRenderer.send("helix:show", { tabId, url, partition, force }),
   hidePage: () => ipcRenderer.send("helix:hide"),
   closePage: (tabId) => ipcRenderer.send("helix:close", tabId),
   extractText: () => ipcRenderer.invoke("helix:extract"),
@@ -16,5 +17,10 @@ contextBridge.exposeInMainWorld("helix", {
     const fn = (_e, ev) => cb(ev);
     ipcRenderer.on("helix:page", fn);
     return () => ipcRenderer.removeListener("helix:page", fn);
+  },
+  onOpenInFace: (cb) => {
+    const fn = (_e, ev) => cb(ev);
+    ipcRenderer.on("helix:open-in-face", fn);
+    return () => ipcRenderer.removeListener("helix:open-in-face", fn);
   },
 });

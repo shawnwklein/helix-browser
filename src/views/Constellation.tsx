@@ -20,9 +20,9 @@ export function Constellation() {
           <em>with a spine.</em>
         </h1>
         <p className="lede">
-          One strand is the page. The other is Grok — Scout extracting, Skeptic
-          stress-testing, Fork arguing the opposite. The Continuum keeps the
-          argument when the tab is gone.
+          Faces are who you are on the web — Chrome profiles, rebuilt. Each
+          Outlook account is a locked Chromium identity in this same window.
+          Grok still sits on the other strand: Scout, Skeptic, Fork.
         </p>
         <form
           className="ask-field"
@@ -42,6 +42,30 @@ export function Constellation() {
             Ask
           </button>
         </form>
+        <div className="outlook-hero">
+          <button
+            className="outlook-hero-btn"
+            onClick={() => s.addOutlook("outlook-work")}
+          >
+            <span className="kicker">Work or school</span>
+            <h3>Add Outlook</h3>
+            <p>outlook.office.com · its own cookies, its own Face</p>
+          </button>
+          <button
+            className="outlook-hero-btn"
+            onClick={() => s.addOutlook("outlook-personal")}
+          >
+            <span className="kicker">Personal Microsoft</span>
+            <h3>Add another inbox</h3>
+            <p>outlook.live.com · sits beside work, never inside it</p>
+          </button>
+        </div>
+        {!window.helix && (
+          <p className="web-note">
+            Full account isolation needs the Helix desktop app. This web preview
+            can still open Outlook, but Microsoft cookies are shared here.
+          </p>
+        )}
         <div className="starters">
           {STARTERS.map((st) => (
             <button

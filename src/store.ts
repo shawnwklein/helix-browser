@@ -1,25 +1,48 @@
 import { create } from "zustand";
 import { extractUrl, fetchStatus, streamGrok } from "./lib/client";
 import { rememberEcho } from "./lib/echo";
+import {
+  defaultFaces,
+  nextFaceColor,
+  outlookLabel,
+  OUTLOOK_PERSONAL,
+  OUTLOOK_WORK,
+  partitionFor,
+} from "./lib/faces";
 import { parseOmnibox, type Intent } from "./lib/intent";
 import {
   emptyAnswer,
   type AnswerState,
   type Continuum,
   type Echo,
+  type Face,
   type MindMessage,
   type MindMode,
   type Tab,
 } from "./lib/types";
 
-const PERSIST = "helix:v1";
+const PERSIST = "helix:v2";
 
 function nid() {
   return crypto.randomUUID();
 }
 
-function homeTab(): Tab {
-  return { id: nid(), kind: "home", title: "New thread" };
+function homeTab(faceId: string): Tab {
+  return { id: nid(), kind: "home", title: "New thread", faceId };
+}
+
+function showLive(tab: Tab, faces: Face[], force = false) {
+  if (!window.helix || tab.kind !== "page" || !tab.url || tab.viewMode === "reader") {
+    window.helix?.hidePage();
+    return;
+  }
+  const face = faces.find((f) => f.id === tab.faceId);
+  window.helix.showPage(
+    tab.id,
+    tab.url,
+    face?.partition || partitionFor(tab.faceId),
+    force,
+  );
 }
 
 function isNarrow() {
@@ -39,6 +62,8 @@ function loadPersisted(): Partial<HelixState> | null {
 type HelixState = {
   tabs: Tab[];
   activeId: string;
+  faces: Face[];
+  activeFaceId: string;
   continuum: Continuum;
   echoes: Echo[];
   continuumOpen: boolean;
@@ -56,10 +81,10 @@ type HelixState = {
   persist: () => void;
   submitOmnibox: (raw: string, intent?: Intent) => void;
   runCommand: (command: string, args?: string) => void;
-  newTab: () => void;
+  newTab: (faceId?: string) => void;
   closeTab: (id: string) => void;
   activate: (id: string) => void;
-  navigate: (url: string, inPlace?: boolean) => void;
+  navigate: (url: string, inPlace?: boolean, faceId?: string) => void;
   setViewMode: (mode: "live" | "reader") => void;
   startResearch: (query: string, opts?: { replace?: boolean; fork?: boolean; claim?: string }) => void;
   followUp: (query: string) => void;
@@ -73,6 +98,13 @@ type HelixState = {
   setMindMode: (m: MindMode) => void;
   setCommandOpen: (v: boolean) => void;
   setSettingsOpen: (v: boolean) => void;
+  setActiveFace: (id: string) => void;
+  addOutlook: (kind: "outlook-work" | "outlook-personal") => void;
+  addFace: (name?: string) => void;
+  renameFace: (id: string, name: string) => void;
+  setFaceHint: (id: string, hint: string) => void;
+  removeFace: (id: string) => void;
+  openFaceHome: (id: string) => void;
   refreshStatus: () => Promise<void>;
   goBack: () => void;
   goForward: () => void;
@@ -80,14 +112,25 @@ type HelixState = {
 };
 
 const persisted = typeof localStorage !== "undefined" ? loadPersisted() : null;
-const initialTabs = persisted?.tabs?.length ? persisted.tabs : [homeTab()];
-const initialActive = persisted?.activeId && initialTabs.some((t) => t.id === persisted.activeId)
-  ? persisted.activeId
-  : initialTabs[0].id;
+const initialFaces =
+  persisted?.faces && persisted.faces.length > 0 ? persisted.faces : defaultFaces();
+const initialFaceId =
+  persisted?.activeFaceId && initialFaces.some((f) => f.id === persisted.activeFaceId)
+    ? persisted.activeFaceId
+    : initialFaces[0].id;
+const initialTabs = (
+  persisted?.tabs?.length ? persisted.tabs : [homeTab(initialFaceId)]
+).map((t) => ({ ...t, faceId: t.faceId || initialFaceId }));
+const initialActive =
+  persisted?.activeId && initialTabs.some((t) => t.id === persisted.activeId)
+    ? persisted.activeId
+    : initialTabs[0].id;
 
 export const useHelix = create<HelixState>((set, get) => ({
   tabs: initialTabs,
   activeId: initialActive,
+  faces: initialFaces,
+  activeFaceId: initialFaceId,
   continuum: persisted?.continuum || {
     question: "",
     startedAt: Date.now(),
@@ -123,6 +166,8 @@ export const useHelix = create<HelixState>((set, get) => ({
         activeId: s.activeId,
         continuum: s.continuum,
         echoes: s.echoes,
+        faces: s.faces,
+        activeFaceId: s.activeFaceId,
         continuumOpen: s.continuumOpen,
         mindOpen: s.mindOpen,
       }),
@@ -135,8 +180,8 @@ export const useHelix = create<HelixState>((set, get) => ({
     if (desktop) {
       desktop.onPageEvent((ev) => {
         if (!ev.tabId) return;
-        set((s) => ({
-          tabs: s.tabs.map((t) =>
+        set((s) => {
+          const tabs = s.tabs.map((t) =>
             t.id === ev.tabId
               ? {
                   ...t,
@@ -146,8 +191,31 @@ export const useHelix = create<HelixState>((set, get) => ({
                   canGoForward: ev.canGoForward,
                 }
               : t,
-          ),
-        }));
+          );
+          const tab = tabs.find((t) => t.id === ev.tabId);
+          const email = ev.title?.match(
+            /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i,
+          )?.[0];
+          const autoName = /^(Work Outlook|Personal Outlook|Outlook)( \d+)?$/;
+          const faces = email
+            ? s.faces.map((f) =>
+                f.id === tab?.faceId && f.kind.startsWith("outlook")
+                  ? {
+                      ...f,
+                      hint: f.hint || email,
+                      name: autoName.test(f.name) ? email : f.name,
+                    }
+                  : f,
+              )
+            : s.faces;
+          return { tabs, faces };
+        });
+      });
+      desktop.onOpenInFace((ev) => {
+        const face =
+          get().faces.find((f) => f.partition === ev.partition) ||
+          get().faces.find((f) => f.id === get().activeFaceId);
+        if (ev.url) get().navigate(ev.url, false, face?.id);
       });
     }
   },
@@ -187,11 +255,13 @@ export const useHelix = create<HelixState>((set, get) => ({
   setCommandOpen: (commandOpen) => set({ commandOpen }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
 
-  newTab: () => {
-    const tab = homeTab();
+  newTab: (faceId) => {
+    const id = faceId || get().activeFaceId;
+    const tab = homeTab(id);
     set((s) => ({
       tabs: [...s.tabs, tab],
       activeId: tab.id,
+      activeFaceId: id,
       omnibox: "",
       ...(isNarrow() ? { mindOpen: false, continuumOpen: false } : {}),
     }));
@@ -200,9 +270,9 @@ export const useHelix = create<HelixState>((set, get) => ({
   },
 
   closeTab: (id) => {
-    const { tabs, activeId } = get();
+    const { tabs, activeId, activeFaceId } = get();
     if (tabs.length === 1) {
-      const tab = homeTab();
+      const tab = homeTab(activeFaceId);
       set({ tabs: [tab], activeId: tab.id, omnibox: "" });
       window.helix?.closePage(id);
       window.helix?.hidePage();
@@ -225,13 +295,10 @@ export const useHelix = create<HelixState>((set, get) => ({
     if (!tab) return;
     set({
       activeId: id,
+      activeFaceId: tab.faceId || get().activeFaceId,
       omnibox: tab.kind === "page" ? tab.url || "" : tab.query || "",
     });
-    if (tab.kind === "page" && tab.url && tab.viewMode !== "reader") {
-      window.helix?.showPage(tab.id, tab.url);
-    } else {
-      window.helix?.hidePage();
-    }
+    showLive(tab, get().faces, false);
     get().persist();
   },
 
@@ -267,7 +334,12 @@ export const useHelix = create<HelixState>((set, get) => ({
       const existing = get().tabs.find((t) => t.kind === "mosaic");
       if (existing) get().activate(existing.id);
       else {
-        const tab: Tab = { id: nid(), kind: "mosaic", title: "Mosaic" };
+        const tab: Tab = {
+          id: nid(),
+          kind: "mosaic",
+          title: "Mosaic",
+          faceId: get().activeFaceId,
+        };
         set((s) => ({ tabs: [...s.tabs, tab], activeId: tab.id }));
         window.helix?.hidePage();
       }
@@ -278,36 +350,37 @@ export const useHelix = create<HelixState>((set, get) => ({
       }
     } else if (cmd === "new") get().newTab();
     else if (cmd === "settings") set({ settingsOpen: true });
+    else if (cmd === "outlook") get().addOutlook("outlook-work");
+    else if (cmd === "outlook-personal") get().addOutlook("outlook-personal");
     set({ commandOpen: false });
   },
 
-  navigate: (url, inPlace) => {
-    const { tabs, activeId } = get();
+  navigate: (url, inPlace, faceId) => {
+    const { tabs, activeId, faces, activeFaceId } = get();
+    const fid = faceId || activeFaceId;
     const active = tabs.find((t) => t.id === activeId);
     const reuse =
       inPlace ||
-      active?.kind === "page" ||
-      active?.kind === "home";
+      ((active?.kind === "page" || active?.kind === "home") &&
+        (!faceId || active.faceId === faceId));
     const id = reuse && active ? active.id : nid();
     const tab: Tab = {
       id,
       kind: "page",
       title: new URL(url).hostname.replace(/^www\./, ""),
       url,
-      viewMode: window.helix ? "live" : "live",
+      faceId: fid,
+      viewMode: "live",
     };
     set((s) => ({
       tabs: reuse && active
         ? s.tabs.map((t) => (t.id === id ? { ...t, ...tab, id: t.id } : t))
         : [...s.tabs, tab],
       activeId: id,
+      activeFaceId: fid,
       omnibox: url,
     }));
-    if (window.helix && tab.viewMode === "live") {
-      window.helix.showPage(id, url);
-    } else {
-      window.helix?.hidePage();
-    }
+    showLive(tab, faces, true);
     get().persist();
     extractUrl(url)
       .then((extract) => {
@@ -340,8 +413,7 @@ export const useHelix = create<HelixState>((set, get) => ({
       tabs: s.tabs.map((t) => (t.id === id ? { ...t, viewMode: mode } : t)),
     }));
     const tab = get().tabs.find((t) => t.id === id);
-    if (mode === "live" && tab?.url) window.helix?.showPage(id, tab.url);
-    else window.helix?.hidePage();
+    if (tab) showLive({ ...tab, viewMode: mode }, get().faces, false);
   },
 
   startResearch: (query, opts) => {
@@ -354,6 +426,7 @@ export const useHelix = create<HelixState>((set, get) => ({
       kind: "answer",
       title: opts?.fork ? `Fork: ${query.slice(0, 40)}` : query.slice(0, 48),
       query,
+      faceId: active?.faceId || get().activeFaceId,
       isFork: opts?.fork,
       forkedFrom: opts?.fork ? activeId : undefined,
       answer: emptyAnswer(),
@@ -553,6 +626,94 @@ export const useHelix = create<HelixState>((set, get) => ({
     );
   },
 
+  setActiveFace: (id) => {
+    const face = get().faces.find((f) => f.id === id);
+    if (!face) return;
+    const owned = [...get().tabs].reverse().find((t) => t.faceId === id);
+    set({ activeFaceId: id });
+    if (owned) get().activate(owned.id);
+    else get().newTab(id);
+    get().persist();
+  },
+
+  addOutlook: (kind) => {
+    const faces = get().faces;
+    const n = faces.filter((f) => f.kind === kind).length + 1;
+    const id = nid();
+    const face: Face = {
+      id,
+      name: outlookLabel(kind, n),
+      color: nextFaceColor(faces),
+      kind,
+      partition: partitionFor(id),
+      homeUrl: kind === "outlook-work" ? OUTLOOK_WORK : OUTLOOK_PERSONAL,
+      createdAt: Date.now(),
+    };
+    set({ faces: [...faces, face], activeFaceId: id });
+    get().navigate(face.homeUrl!, false, id);
+    get().persist();
+  },
+
+  addFace: (name) => {
+    const faces = get().faces;
+    const id = nid();
+    const face: Face = {
+      id,
+      name: name || `Face ${faces.length + 1}`,
+      color: nextFaceColor(faces),
+      kind: "general",
+      partition: partitionFor(id),
+      createdAt: Date.now(),
+    };
+    set({ faces: [...faces, face], activeFaceId: id });
+    get().newTab(id);
+    get().persist();
+  },
+
+  renameFace: (id, name) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    set((s) => ({
+      faces: s.faces.map((f) => (f.id === id ? { ...f, name: trimmed } : f)),
+    }));
+    get().persist();
+  },
+
+  setFaceHint: (id, hint) => {
+    set((s) => ({
+      faces: s.faces.map((f) => (f.id === id ? { ...f, hint } : f)),
+    }));
+    get().persist();
+  },
+
+  removeFace: (id) => {
+    const { faces, tabs, activeFaceId, activeId } = get();
+    if (faces.length <= 1) return;
+    const fallback = faces.find((f) => f.id !== id)?.id;
+    if (!fallback) return;
+    const doomed = tabs.filter((t) => t.faceId === id);
+    doomed.forEach((t) => window.helix?.closePage(t.id));
+    const nextTabs = tabs.filter((t) => t.faceId !== id);
+    const remaining = nextTabs.length ? nextTabs : [homeTab(fallback)];
+    const nextActive =
+      remaining.find((t) => t.id === activeId)?.id || remaining[0].id;
+    set({
+      faces: faces.filter((f) => f.id !== id),
+      tabs: remaining,
+      activeId: nextActive,
+      activeFaceId: activeFaceId === id ? fallback : activeFaceId,
+    });
+    get().persist();
+  },
+
+  openFaceHome: (id) => {
+    const face = get().faces.find((f) => f.id === id);
+    if (!face) return;
+    set({ activeFaceId: id });
+    if (face.homeUrl) get().navigate(face.homeUrl, false, id);
+    else get().newTab(id);
+  },
+
   goBack: () => window.helix?.goBack(),
   goForward: () => window.helix?.goForward(),
   reload: () => {
@@ -566,4 +727,12 @@ export const useHelix = create<HelixState>((set, get) => ({
 
 export function activeTab(s: HelixState) {
   return s.tabs.find((t) => t.id === s.activeId) || s.tabs[0];
+}
+
+export function activeFace(s: HelixState) {
+  return s.faces.find((f) => f.id === s.activeFaceId) || s.faces[0];
+}
+
+export function faceOf(s: HelixState, faceId?: string) {
+  return s.faces.find((f) => f.id === faceId) || s.faces[0];
 }

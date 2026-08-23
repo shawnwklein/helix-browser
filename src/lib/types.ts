@@ -38,10 +38,24 @@ export type ExtractedPage = {
   length: number;
 };
 
+export type FaceKind = "personal" | "work" | "outlook-work" | "outlook-personal" | "general";
+
+export type Face = {
+  id: string;
+  name: string;
+  color: string;
+  kind: FaceKind;
+  partition: string;
+  hint?: string;
+  homeUrl?: string;
+  createdAt: number;
+};
+
 export type Tab = {
   id: string;
   kind: TabKind;
   title: string;
+  faceId: string;
   url?: string;
   query?: string;
   isFork?: boolean;

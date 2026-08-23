@@ -10,7 +10,15 @@ type HelixDesktop = {
   reload: () => void;
   stop: () => void;
   setContentBounds: (rect: ContentBounds | null) => void;
-  showPage: (tabId: string, url: string) => void;
+  showPage: (
+    tabId: string,
+    url: string,
+    partition?: string,
+    force?: boolean,
+  ) => void;
+  onOpenInFace: (
+    cb: (ev: { url: string; partition: string; faceId?: string }) => void,
+  ) => () => void;
   hidePage: () => void;
   closePage: (tabId: string) => void;
   extractText: () => Promise<string>;

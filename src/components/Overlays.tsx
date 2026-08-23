@@ -9,6 +9,17 @@ export function CommandPalette() {
   const items = useMemo(() => {
     const all = [
       { k: "new", label: "New thread", run: () => s.newTab() },
+      {
+        k: "outlook",
+        label: "Add work Outlook Face",
+        run: () => s.addOutlook("outlook-work"),
+      },
+      {
+        k: "outlook-personal",
+        label: "Add personal Microsoft Outlook",
+        run: () => s.addOutlook("outlook-personal"),
+      },
+      { k: "face", label: "New Face", run: () => s.addFace() },
       { k: "continuum", label: "Toggle Continuum", run: s.toggleContinuum },
       { k: "mind", label: "Toggle Split Mind", run: s.toggleMind },
       { k: "settings", label: "Settings / API key", run: () => s.setSettingsOpen(true) },

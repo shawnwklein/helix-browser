@@ -55,6 +55,15 @@ export function PageView({ tab }: { tab: Tab }) {
         <span className="pane-kicker" style={{ marginLeft: 8 }}>
           {hostOf(tab.url)}
         </span>
+        <span
+          className="page-face"
+          style={{
+            ["--face" as string]:
+              s.faces.find((f) => f.id === tab.faceId)?.color || "#d4a06a",
+          }}
+        >
+          {s.faces.find((f) => f.id === tab.faceId)?.name}
+        </span>
         <div className="ghost">
           <button onClick={() => s.runMind("scout")}>Scout</button>
           <button onClick={() => s.runMind("skeptic")}>Skeptic</button>

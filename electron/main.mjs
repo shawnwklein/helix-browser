@@ -15,6 +15,7 @@ app.setName("Helix");
 app.setAppUserModelId("com.helix.browser");
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+/** @type {Map<string, { view: WebContentsView, partition: string }>} */
 const pages = new Map();
 let win = null;
 let visibleTab = null;
@@ -33,46 +34,92 @@ function sendMeta(tabId, view) {
   });
 }
 
+function destroyView(tabId) {
+  const rec = pages.get(tabId);
+  if (!rec) return;
+  if (win) {
+    try {
+      win.contentView.removeChildView(rec.view);
+    } catch {
+      /* already detached */
+    }
+  }
+  try {
+    rec.view.webContents.close();
+  } catch {
+    /* gone */
+  }
+  pages.delete(tabId);
+}
+
 function activeView() {
-  return visibleTab ? pages.get(visibleTab) : null;
+  return visibleTab ? pages.get(visibleTab)?.view : null;
 }
 
 function layout() {
   if (!win) return;
-  const view = activeView();
-  for (const [id, v] of pages) {
+  const rec = visibleTab ? pages.get(visibleTab) : null;
+  const view = rec?.view;
+  for (const [id, r] of pages) {
     const show = Boolean(view && id === visibleTab && bounds && bounds.width > 4);
     const children = win.contentView.children || [];
-    const attached = children.includes(v);
-    if (show && !attached) win.contentView.addChildView(v);
-    if (!show && attached) win.contentView.removeChildView(v);
-    if (show) v.setBounds(bounds);
+    const attached = children.includes(r.view);
+    if (show && !attached) win.contentView.addChildView(r.view);
+    if (!show && attached) win.contentView.removeChildView(r.view);
+    if (show) r.view.setBounds(bounds);
   }
 }
 
-function viewFor(tabId) {
-  let view = pages.get(tabId);
-  if (view) return view;
-  view = new WebContentsView({
+function viewFor(tabId, partition) {
+  const part = partition || "persist:helix-face-personal";
+  let rec = pages.get(tabId);
+  if (rec && rec.partition !== part) {
+    destroyView(tabId);
+    rec = undefined;
+  }
+  if (rec) return rec.view;
+  const view = new WebContentsView({
     webPreferences: {
       sandbox: true,
-      partition: "persist:helix",
+      partition: part,
       backgroundThrottling: false,
     },
   });
   const ua = view.webContents
     .getUserAgent()
-    .replace(/Electron\/\S+/, "Helix/0.1");
+    .replace(/Electron\/\S+/, "Helix/0.2");
   view.webContents.setUserAgent(ua);
   view.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    const dest = url || "";
+    if (!dest || dest === "about:blank") {
+      return {
+        action: "allow",
+        overrideBrowserWindowOptions: {
+          width: 980,
+          height: 760,
+          backgroundColor: "#0B0A09",
+          autoHideMenuBar: true,
+          webPreferences: { sandbox: true, partition: part },
+        },
+      };
+    }
+    if (/^https?:/i.test(dest)) {
+      if (win) {
+        win.webContents.send("helix:open-in-face", {
+          url: dest,
+          partition: part,
+        });
+      }
+      return { action: "deny" };
+    }
+    shell.openExternal(dest);
     return { action: "deny" };
   });
   view.webContents.on("did-navigate", () => sendMeta(tabId, view));
   view.webContents.on("did-navigate-in-page", () => sendMeta(tabId, view));
   view.webContents.on("page-title-updated", () => sendMeta(tabId, view));
   view.webContents.on("did-finish-load", () => sendMeta(tabId, view));
-  pages.set(tabId, view);
+  pages.set(tabId, { view, partition: part });
   return view;
 }
 
@@ -128,23 +175,16 @@ app.whenReady().then(async () => {
     visibleTab = null;
     layout();
   });
-  ipcMain.on("helix:show", (_e, { tabId, url }) => {
-    const view = viewFor(tabId);
-    if (url) view.webContents.loadURL(url);
+  ipcMain.on("helix:show", (_e, { tabId, url, partition, force }) => {
+    const view = viewFor(tabId, partition);
+    const current = view.webContents.getURL();
+    const empty = !current || current === "about:blank";
+    if (url && (force || empty)) view.webContents.loadURL(url);
     visibleTab = tabId;
     layout();
   });
   ipcMain.on("helix:close", (_e, tabId) => {
-    const view = pages.get(tabId);
-    if (view && win) {
-      try {
-        win.contentView.removeChildView(view);
-      } catch {
-        /* already detached */
-      }
-      view.webContents.close();
-    }
-    pages.delete(tabId);
+    destroyView(tabId);
     if (visibleTab === tabId) visibleTab = null;
   });
   ipcMain.on("helix:back", () => {

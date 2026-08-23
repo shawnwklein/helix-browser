@@ -26,6 +26,7 @@ export const STARTERS = [
 ];
 
 export const COMMANDS = [
+  { cmd: "/outlook", hint: "Add a work Outlook Face" },
   { cmd: "/scout", hint: "Read this page as Scout" },
   { cmd: "/skeptic", hint: "Stress-test this page" },
   { cmd: "/fork", hint: "Open the opposing case" },

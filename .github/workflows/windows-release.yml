@@ -8,7 +8,7 @@ on:
     inputs:
       tag:
         description: "Release tag"
-        default: "v0.1.0"
+        default: "v0.2.0"
         required: true
 
 permissions:
@@ -52,8 +52,11 @@ jobs:
             **Helix** is a Grok-native Chromium browser for Windows.
 
             ### Download
-            - **Helix-0.1.0-portable.exe** — no installer, run it
-            - **Helix Setup 0.1.0.exe** — NSIS installer
+            - **portable.exe** — no installer, run it
+            - **Setup.exe** — NSIS installer
+
+            ### Faces
+            Chrome profiles open a new browser. Helix Faces keep multiple Outlook / Microsoft accounts in one window, each with its own Chromium cookie jar. Click **+ Outlook** (or Ctrl+Shift+O).
 
             Windows SmartScreen may warn because the build is unsigned. Choose **More info → Run anyway**.
 

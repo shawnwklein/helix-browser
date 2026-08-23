@@ -6,8 +6,8 @@ A Grok-native Chromium browser. One strand is the web. The other is Grok.
 
 Get the latest `.exe` from **[Releases](https://github.com/shawnwklein/helix-browser/releases/latest)**:
 
-- **[Helix-0.1.0-portable.exe](https://github.com/shawnwklein/helix-browser/releases/latest)** — no installer. Download and run.
-- **Helix-Setup-0.1.0.exe** — optional installer (Start Menu + desktop shortcut).
+- **Helix-*-portable.exe** — no installer. Download and run.
+- **Helix-Setup-*.exe** — optional installer (Start Menu + desktop shortcut).
 
 Windows SmartScreen may warn because the build is unsigned. Choose **More info → Run anyway**.
 
@@ -21,6 +21,8 @@ Perplexity taught people to expect an answer with footnotes. That is a good habi
 
 Helix inverts it.
 
+- **Faces, not Chrome profiles.** Chrome opens a whole extra browser per person. Helix keeps every identity in one window: color-coded tabs, locked Chromium cookie jars (`persist:helix-face-…`). Two Outlooks, two Microsoft logins, zero window-juggling.
+- **Add Outlook is one click.** Work (`outlook.office.com`) or personal (`outlook.live.com`) — each Face is a sealed session. After you sign in, Helix names the Face from the mailbox if it can.
 - **Tabs are evidence.** Closing one should not close the thought.
 - **The Continuum is the document.** A spine of the originating question, what holds, what fails, and the tensions still live.
 - **Split Mind is two uses of Grok, not two mascots.** Scout extracts. Skeptic leaves the page and checks the load-bearing claims against the live web and X.
@@ -71,7 +73,9 @@ Without a key, Helix stays in **demo orbit**: the chrome is real, the fusion sta
 | `⌘/Ctrl K` | Command palette |
 | `⌘/Ctrl Shift C` | Continuum |
 | `⌘/Ctrl Shift M` | Split Mind |
-| `/scout` `/skeptic` `/fork` `/mosaic` `/reader` | Omnibox commands |
+| `Ctrl+Shift+O` | Add work Outlook Face |
+| `Ctrl+Shift+1…9` | Switch Face |
+| `/outlook` `/scout` `/skeptic` `/fork` `/mosaic` `/reader` | Omnibox commands |
 
 ## What “Grok throughout” actually means
 

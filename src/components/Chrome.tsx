@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { parseOmnibox, previewIntent } from "../lib/intent";
-import { activeTab, useHelix } from "../store";
+import { activeFace, activeTab, faceOf, useHelix } from "../store";
+import { FaceBar } from "./FaceBar";
 import { HelixLogo } from "./HelixLogo";
 
 export function Chrome() {
@@ -40,6 +41,17 @@ export function Chrome() {
         e.preventDefault();
         h.toggleMind();
       }
+      if (meta && e.shiftKey && e.key.toLowerCase() === "o") {
+        e.preventDefault();
+        h.addOutlook("outlook-work");
+      }
+      if (meta && e.shiftKey && e.code.startsWith("Digit")) {
+        const face = h.faces[Number(e.code.slice(5)) - 1];
+        if (face) {
+          e.preventDefault();
+          h.setActiveFace(face.id);
+        }
+      }
       if (e.key === "Escape") {
         h.setCommandOpen(false);
         h.setSettingsOpen(false);
@@ -59,15 +71,19 @@ export function Chrome() {
     input.current?.blur();
   };
 
+  const face = activeFace(s);
+
   return (
     <header className="chrome">
+      <FaceBar />
       <div className="tabs">
         {s.tabs.map((t) => (
           <div
             key={t.id}
             className={`tab${t.id === s.activeId ? " active" : ""}${t.isFork ? " fork" : ""}`}
+            style={{ ["--face" as string]: faceOf(s, t.faceId)?.color }}
             onClick={() => s.activate(t.id)}
-            title={t.title}
+            title={`${t.title} · ${faceOf(s, t.faceId)?.name || ""}`}
           >
             <TabGlyph kind={t.kind} fork={t.isFork} url={t.url} />
             <span className="tab-title">{t.title}</span>
@@ -112,6 +128,13 @@ export function Chrome() {
           }}
         >
           <HelixLogo spinning={streaming} />
+          <span
+            className="omnibox-face"
+            style={{ ["--face" as string]: face?.color }}
+            title={face?.name}
+          >
+            {face?.name}
+          </span>
           <input
             ref={input}
             value={s.omnibox}

@@ -71,6 +71,129 @@ a { color: var(--scout); }
   backdrop-filter: blur(16px);
   -webkit-app-region: drag;
 }
+.faces {
+  -webkit-app-region: no-drag;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px 0;
+  min-height: 36px;
+}
+.face-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 10px 0 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.face-pill:hover { color: var(--text); border-color: var(--line-strong); }
+.face-pill.on {
+  color: var(--text);
+  background: color-mix(in srgb, var(--face) 18%, var(--bg-2));
+  border-color: color-mix(in srgb, var(--face) 50%, transparent);
+}
+.face-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--face, var(--scout));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--face) 18%, transparent);
+}
+.face-name { max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+.face-mail {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--face);
+  opacity: 0.85;
+}
+.face-actions { display: flex; align-items: center; gap: 4px; }
+.outlook-add {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(110, 168, 255, 0.35);
+  color: #9cc4ff;
+  font-size: 12px;
+  letter-spacing: 0.01em;
+}
+.outlook-add:hover { background: rgba(110, 168, 255, 0.1); color: var(--text); }
+.face-now {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.face-now b { color: var(--face, var(--text-dim)); font-weight: 500; }
+.face-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 12px;
+  z-index: 30;
+  width: min(360px, 90vw);
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid var(--line-strong);
+  background: var(--bg-3);
+  box-shadow: var(--shadow);
+}
+.face-menu p {
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 8px 0 12px;
+}
+.face-menu input { margin: 8px 0; }
+.omnibox-face {
+  flex: 0 0 auto;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--face, var(--scout));
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--face) 14%, transparent);
+}
+.page-face {
+  margin-left: 8px;
+  font-size: 11px;
+  color: var(--face);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--face) 35%, transparent);
+}
+.outlook-hero {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 22px 0 8px;
+}
+.outlook-hero-btn {
+  text-align: left;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(110, 168, 255, 0.28);
+  background: rgba(18, 17, 15, 0.7);
+}
+.outlook-hero-btn:hover { border-color: rgba(110, 168, 255, 0.55); background: var(--bg-3); }
+.outlook-hero-btn h3 {
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 400;
+  margin: 4px 0 6px;
+}
+.outlook-hero-btn p { margin: 0; color: var(--text-dim); font-size: 13px; }
+.web-note {
+  color: var(--text-faint);
+  font-size: 12px;
+  margin: 8px 0 0;
+}
 .tabs {
   display: flex;
   align-items: end;
@@ -95,6 +218,7 @@ a { color: var(--scout); }
   color: var(--text-dim);
   border-radius: 8px 8px 0 0;
   overflow: hidden;
+  box-shadow: inset 0 2px 0 var(--face, transparent);
 }
 .tab:hover { color: var(--text); background: var(--bg-3); }
 .tab.active {
@@ -108,7 +232,7 @@ a { color: var(--scout); }
   right: 12px;
   bottom: 0;
   height: 1px;
-  background: linear-gradient(90deg, var(--scout), var(--skeptic));
+  background: var(--face, linear-gradient(90deg, var(--scout), var(--skeptic)));
 }
 .tab.fork.active::after { background: var(--fork); }
 .tab-icon {
@@ -925,7 +1049,9 @@ a { color: var(--scout); }
 .drawer-back { display: none; }
 
 @media (max-width: 960px) {
-  .starters { grid-template-columns: 1fr; }
+  .starters, .outlook-hero { grid-template-columns: 1fr; }
+  .face-name { max-width: 72px; }
+  .omnibox-face { display: none; }
   .split-board { grid-template-columns: 1fr; }
   .continuum, .mind {
     position: absolute;
