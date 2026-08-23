@@ -28,6 +28,18 @@ if (!storeSrc.includes("resolveFaceClick") || !storeSrc.includes("faceStayPulse"
   console.error("setActiveFace must use resolveFaceClick and pulse stay");
   process.exit(1);
 }
+const setActiveFaceBody = storeSrc.match(
+  /setActiveFace:\s*\(id\)\s*=>\s*\{([\s\S]*?)\n  \},/,
+)?.[1];
+if (
+  !setActiveFaceBody ||
+  !/if \(click\.kind === "stay"\) \{[\s\S]*faceStayPulse[\s\S]*return;[\s\S]*faceStayPulse/.test(
+    setActiveFaceBody,
+  )
+) {
+  console.error("setActiveFace must pulse faceStayPulse on switch as well as stay");
+  process.exit(1);
+}
 if (!faceBarSrc.includes("stay") || !faceBarSrc.includes("faceStayPulse")) {
   console.error("FaceBar must pulse the lit pill and Browsing as on a stay click");
   process.exit(1);
@@ -80,6 +92,12 @@ if (!chromeSrc.includes("faceIndexFromDigitCode")) {
 }
 if (!chromeSrc.includes('e.shiftKey && e.code.startsWith("Digit")')) {
   console.error("Chrome Digit Face-switch must keep shiftKey");
+  process.exit(1);
+}
+if (
+  !/e\.shiftKey && e\.code\.startsWith\("Digit"\)[\s\S]{0,320}setActiveFace/.test(chromeSrc)
+) {
+  console.error("Chrome Digit Face-switch must call setActiveFace (same pulse path as a click)");
   process.exit(1);
 }
 if (!chromeSrc.includes("faceSwitchChord")) {

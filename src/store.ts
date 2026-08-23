@@ -679,11 +679,12 @@ export const useHelix = create<HelixState>((set, get) => ({
       activeId,
       tabs,
     });
+    const faceStayPulse = get().faceStayPulse + 1;
     if (click.kind === "stay") {
-      set({ faceStayPulse: get().faceStayPulse + 1 });
+      set({ faceStayPulse });
       return;
     }
-    set({ activeFaceId: id });
+    set({ activeFaceId: id, faceStayPulse });
     if (click.kind === "activate") get().activate(click.tabId);
     else get().newTab(click.faceId);
     get().persist();
