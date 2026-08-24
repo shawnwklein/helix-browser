@@ -1,26 +1,36 @@
 import { findEchoes } from "../lib/echo";
-import { useHelix } from "../store";
+import { activeFace, useHelix } from "../store";
 
 export function Continuum() {
   const s = useHelix();
+  const face = activeFace(s);
   const echoes = findEchoes(
     s.continuum.question || s.omnibox,
     s.echoes,
   );
 
   return (
-    <aside className="continuum">
+    <aside
+      className="continuum"
+      style={{ ["--face" as string]: face?.color }}
+    >
       <div className="pane-head">
-        <span className="pane-kicker">The spine</span>
+        <span className="pane-kicker">
+          <i className="face-dot" />
+          <b>{face?.name}</b>'s spine
+        </span>
         <button className="ico" onClick={s.toggleContinuum} title="Close">
           ×
         </button>
       </div>
       <div className="pane-body">
-        <p className="spine-q">
-          {s.continuum.question ||
-            "Ask something and Helix will keep the argument here while you wander."}
-        </p>
+        {s.continuum.question ? (
+          <p className="spine-q">{s.continuum.question}</p>
+        ) : (
+          <p className="spine-empty">
+            Ask Grok as <b>{face?.name}</b> — the argument stays here while this Face wanders
+          </p>
+        )}
 
         {s.continuum.findings.length > 0 && (
           <>

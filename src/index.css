@@ -1122,6 +1122,15 @@ a { color: var(--scout); }
   background: var(--bg-2);
   border-right: 1px solid var(--line);
 }
+.continuum {
+  background:
+    radial-gradient(
+      200px 160px at 0% 0%,
+      color-mix(in srgb, var(--face, var(--scout)) 12%, transparent),
+      transparent 72%
+    ),
+    var(--bg-2);
+}
 .mind {
   flex-basis: var(--mind);
   border-right: 0;
@@ -1145,6 +1154,26 @@ a { color: var(--scout); }
   text-transform: uppercase;
   color: var(--text-faint);
 }
+.continuum .pane-kicker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: var(--text-dim);
+}
+.continuum .pane-kicker .face-dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+}
+.continuum .pane-kicker b {
+  color: var(--face, var(--text));
+  font-weight: 500;
+}
 .pane-body {
   flex: 1;
   overflow: auto;
@@ -1155,6 +1184,17 @@ a { color: var(--scout); }
   font-size: 18px;
   line-height: 1.25;
   margin: 0 0 18px;
+}
+.spine-empty {
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--text-dim);
+  margin: 0 0 18px;
+}
+.spine-empty b {
+  color: var(--face, var(--text));
+  font-weight: 500;
 }
 .vertebra {
   position: relative;

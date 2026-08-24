@@ -11,6 +11,7 @@ const facesSrc = readFileSync(path.join(root, "src/lib/faces.ts"), "utf8");
 const storeSrc = readFileSync(path.join(root, "src/store.ts"), "utf8");
 const faceBarSrc = readFileSync(path.join(root, "src/components/FaceBar.tsx"), "utf8");
 const overlaysSrc = readFileSync(path.join(root, "src/components/Overlays.tsx"), "utf8");
+const continuumSrc = readFileSync(path.join(root, "src/components/Continuum.tsx"), "utf8");
 const cssSrc = readFileSync(path.join(root, "src/index.css"), "utf8");
 if (!constellationSrc.includes("omniboxEnter") || constellationSrc.includes("parseOmnibox")) {
   console.error("Constellation must commit through omniboxEnter, not parseOmnibox");
@@ -1833,6 +1834,115 @@ if (
 }
 if (!cssSrc.includes(".outlook-hero-btn.recede")) {
   console.error("Add Outlook on an inbox Face must recede in CSS");
+  process.exit(1);
+}
+if (!continuumSrc.includes("activeFace") || !continuumSrc.includes('["--face" as string]')) {
+  console.error("Continuum must read activeFace and set --face on the pane");
+  process.exit(1);
+}
+if (continuumSrc.includes("The spine")) {
+  console.error("Continuum kicker must be {name}'s spine, not uppercase The spine");
+  process.exit(1);
+}
+if (
+  !/pane-kicker[\s\S]{0,160}face-dot[\s\S]{0,80}'s spine/.test(continuumSrc)
+) {
+  console.error("Continuum kicker must be a Face-dot plus {name}'s spine");
+  process.exit(1);
+}
+if (
+  !continuumSrc.includes("Ask Grok as") ||
+  !continuumSrc.includes("this Face wanders")
+) {
+  console.error("Continuum empty lede must be Ask Grok as {name} while this Face wanders");
+  process.exit(1);
+}
+if (
+  continuumSrc.includes("Ask something and Helix will keep") ||
+  continuumSrc.includes("while you wander")
+) {
+  console.error("Continuum must drop the faceless empty lede");
+  process.exit(1);
+}
+if (
+  !continuumSrc.includes("spine-q") ||
+  !continuumSrc.includes("s.continuum.question")
+) {
+  console.error("live Continuum question must still render s.continuum.question as spine-q");
+  process.exit(1);
+}
+if (!continuumSrc.includes("spine-empty")) {
+  console.error("empty Continuum lede must use spine-empty type");
+  process.exit(1);
+}
+if (
+  !continuumSrc.includes("Findings") ||
+  !continuumSrc.includes("Still open") ||
+  !continuumSrc.includes("Echoes")
+) {
+  console.error("Continuum Findings, Echoes, and Still open must stay");
+  process.exit(1);
+}
+if (continuumSrc.includes("faceStayPulse")) {
+  console.error("Continuum must not subscribe to faceStayPulse");
+  process.exit(1);
+}
+if (constellationSrc.includes("faceStayPulse")) {
+  console.error("Constellation must not subscribe to faceStayPulse");
+  process.exit(1);
+}
+const continuumPaneCss =
+  cssSrc.match(/\.continuum \{\n[\s\S]*?\n\}/)?.[0] ?? "";
+if (!continuumPaneCss.includes("var(--face") || !continuumPaneCss.includes("radial-gradient")) {
+  console.error("Continuum pane must take a quiet --face wash:", continuumPaneCss);
+  process.exit(1);
+}
+if (/animation:/.test(continuumPaneCss)) {
+  console.error("Continuum wash must stay quiet — no stay pulse:", continuumPaneCss);
+  process.exit(1);
+}
+const continuumKickerCss =
+  cssSrc.match(/\.continuum \.pane-kicker\s*\{[\s\S]*?\}/)?.[0] ?? "";
+if (!continuumKickerCss) {
+  console.error("Continuum kicker must restyle as Face-dot + name, not a generic pane label");
+  process.exit(1);
+}
+if (
+  /text-transform:\s*uppercase/.test(continuumKickerCss) ||
+  !/text-transform:\s*none/.test(continuumKickerCss)
+) {
+  console.error("Continuum kicker must not stay a generic uppercase pane label:", continuumKickerCss);
+  process.exit(1);
+}
+if (/letter-spacing:\s*0\.16em/.test(continuumKickerCss)) {
+  console.error("Continuum kicker must drop pane-kicker tracking:", continuumKickerCss);
+  process.exit(1);
+}
+if (!continuumKickerCss.includes("display: flex") || !continuumKickerCss.includes("align-items: center")) {
+  console.error("Continuum kicker must sit Face-dot + name as identity:", continuumKickerCss);
+  process.exit(1);
+}
+const spineEmptyCss = cssSrc.match(/\.spine-empty\s*\{[\s\S]*?\}/)?.[0] ?? "";
+if (!spineEmptyCss) {
+  console.error("index.css must type the empty Continuum lede as .spine-empty");
+  process.exit(1);
+}
+if (!spineEmptyCss.includes("var(--serif)") || !spineEmptyCss.includes("var(--text-dim)")) {
+  console.error("empty Continuum lede must be quieter serif, not the live spine-q:", spineEmptyCss);
+  process.exit(1);
+}
+if (/@keyframes\s+[^\n]*continuum/.test(cssSrc) || /continuum-stay/.test(cssSrc)) {
+  console.error("Continuum must not invent a stay pulse");
+  process.exit(1);
+}
+const reduceMotionCss =
+  cssSrc.match(/@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\n\}/)?.[0] ?? "";
+if (
+  /continuum-stay|spine-stay|\.continuum[^\n]*stay|\.spine-empty[^\n]*stay/.test(
+    reduceMotionCss,
+  )
+) {
+  console.error("reduced-motion must not invent a Continuum stay pulse");
   process.exit(1);
 }
 if (!facesSrc.includes("export function homeThreadTitle")) {
